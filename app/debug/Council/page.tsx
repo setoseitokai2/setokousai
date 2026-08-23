@@ -15,12 +15,158 @@ const convertGoogleDriveLink = (url: string) => {
 };
 
 // ─────────────────────────────────────────
-//  全削除確認モーダル
+//  ★削除対象 選択モーダル（UID・会場をチェックリストで選択）
 // ─────────────────────────────────────────
-function DestroyModal({
+function SelectDestroyTargetsModal({
+  users,
+  attractions,
   onConfirm,
   onCancel,
 }: {
+  users: any[];
+  attractions: any[];
+  onConfirm: (selectedUserIds: string[], selectedShopIds: string[]) => void;
+  onCancel: () => void;
+}) {
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+  const [selectedShopIds, setSelectedShopIds] = useState<Set<string>>(new Set());
+
+  const toggleUser = (id: string) => {
+    setSelectedUserIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleShop = (id: string) => {
+    setSelectedShopIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const allUsersSelected = users.length > 0 && selectedUserIds.size === users.length;
+  const allShopsSelected = attractions.length > 0 && selectedShopIds.size === attractions.length;
+
+  const toggleAllUsers = () => {
+    setSelectedUserIds(allUsersSelected ? new Set() : new Set(users.map(u => u.id)));
+  };
+  const toggleAllShops = () => {
+    setSelectedShopIds(allShopsSelected ? new Set() : new Set(attractions.map(s => s.id)));
+  };
+
+  const totalSelected = selectedUserIds.size + selectedShopIds.size;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="bg-gray-900 rounded-2xl border border-red-700 shadow-2xl shadow-red-900/40 w-full max-w-2xl max-h-[90vh] flex flex-col animate-fade-in">
+        {/* ヘッダー */}
+        <div className="p-6 pb-4 border-b border-gray-700 flex-shrink-0">
+          <div className="flex flex-col items-center gap-2 mb-2">
+            <div className="text-4xl">💀</div>
+            <h2 className="text-lg font-black text-red-500 tracking-wide text-center">
+              削除する対象を選択してください
+            </h2>
+            <p className="text-xs text-gray-400 text-center leading-relaxed">
+              チェックした <span className="text-red-300 font-bold">UID</span> と <span className="text-red-300 font-bold">会場</span> のみが削除されます。<br />
+              会場を削除すると、その会場の予約・待機列も一緒に削除されます。
+            </p>
+          </div>
+        </div>
+
+        {/* スクロール領域 */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* UID一覧 */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-bold text-yellow-400">👤 UID一覧（{users.length}件）</h3>
+              <button onClick={toggleAllUsers} className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1 rounded border border-gray-600 transition">
+                {allUsersSelected ? "全解除" : "全選択"}
+              </button>
+            </div>
+            {users.length === 0 ? (
+              <p className="text-xs text-gray-500 text-center py-4 bg-gray-800/50 rounded border border-gray-700">UIDが登録されていません</p>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 bg-gray-800/50 p-3 rounded border border-gray-700 max-h-48 overflow-y-auto">
+                {users.map(u => {
+                  const checked = selectedUserIds.has(u.id);
+                  return (
+                    <label key={u.id} className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer border text-xs font-mono transition
+                      ${checked ? "bg-red-900/40 border-red-600 text-red-200" : "bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-500"}`}>
+                      <input type="checkbox" checked={checked} onChange={() => toggleUser(u.id)} className="accent-red-500 w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="truncate">{u.id}{u.isBanned ? " 🚫" : ""}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 会場一覧 */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-bold text-blue-400">🎪 会場一覧（{attractions.length}件）</h3>
+              <button onClick={toggleAllShops} className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1 rounded border border-gray-600 transition">
+                {allShopsSelected ? "全解除" : "全選択"}
+              </button>
+            </div>
+            {attractions.length === 0 ? (
+              <p className="text-xs text-gray-500 text-center py-4 bg-gray-800/50 rounded border border-gray-700">会場が登録されていません</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 bg-gray-800/50 p-3 rounded border border-gray-700 max-h-48 overflow-y-auto">
+                {attractions.map(shop => {
+                  const checked = selectedShopIds.has(shop.id);
+                  return (
+                    <label key={shop.id} className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer border text-xs transition
+                      ${checked ? "bg-red-900/40 border-red-600 text-red-200" : "bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-500"}`}>
+                      <input type="checkbox" checked={checked} onChange={() => toggleShop(shop.id)} className="accent-red-500 w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="font-mono font-bold text-yellow-400">{shop.id}</span>
+                      <span className="truncate">{shop.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* フッター */}
+        <div className="p-6 pt-4 border-t border-gray-700 flex-shrink-0">
+          <div className="text-center text-xs text-gray-400 mb-3">
+            選択中: <span className="text-red-300 font-bold">{selectedUserIds.size}件のUID</span> / <span className="text-red-300 font-bold">{selectedShopIds.size}件の会場</span>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={onCancel}
+              className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 py-3 rounded-xl text-sm font-bold border border-gray-700 transition"
+            >
+              キャンセル
+            </button>
+            <button
+              onClick={() => onConfirm(Array.from(selectedUserIds), Array.from(selectedShopIds))}
+              disabled={totalSelected === 0}
+              className="flex-1 bg-red-700 hover:bg-red-600 disabled:opacity-30 disabled:cursor-not-allowed text-white py-3 rounded-xl text-sm font-black transition shadow-lg shadow-red-900/50"
+            >
+              OK（次へ）
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────
+//  全削除確認モーダル（最終確認）
+// ─────────────────────────────────────────
+function DestroyModal({
+  targetSummary,
+  onConfirm,
+  onCancel,
+}: {
+  targetSummary: string;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -38,10 +184,10 @@ function DestroyModal({
         <div className="flex flex-col items-center mb-6 gap-3">
           <div className="text-5xl">💀</div>
           <h2 className="text-xl font-black text-red-500 tracking-wide text-center">
-            全データ削除 — 最終確認
+            選択したデータの削除 — 最終確認
           </h2>
           <p className="text-xs text-gray-400 text-center leading-relaxed">
-            全会場の <span className="text-red-300 font-bold">UID・予約・待機列・会場データ</span> を完全に削除します。<br />
+            {targetSummary}<br />
             この操作は <span className="text-white font-bold">復元できません</span>。
           </p>
         </div>
@@ -125,8 +271,10 @@ export default function SuperAdminPage() {
   const [guestSelectedTime, setGuestSelectedTime] = useState("");
   const [guestCount, setGuestCount] = useState(1);
 
-  // ★全削除確認モーダル
-  const [showDestroyModal, setShowDestroyModal] = useState(false);
+  // ★削除対象 選択モーダル
+  const [showSelectDestroyModal, setShowSelectDestroyModal] = useState(false);
+  // ★全削除確認モーダル（最終確認）に渡す、選択済みの削除対象
+  const [pendingDestroyTargets, setPendingDestroyTargets] = useState<{ userIds: string[]; shopIds: string[] } | null>(null);
 
   useEffect(() => {
     signInAnonymously(auth).catch(console.error);
@@ -187,16 +335,24 @@ export default function SuperAdminPage() {
     } catch (e) { alert("エラーが発生しました。"); }
   };
 
-  // ★変更: 全UID（usersコレクション）・会場データを両方削除（モーダル経由）
-  const handleBulkDestroyAll = async () => {
+  // ★選択モーダルで「OK」が押された時：選択内容を保持して最終確認モーダルへ
+  const handleSelectDestroyConfirm = (selectedUserIds: string[], selectedShopIds: string[]) => {
+    setPendingDestroyTargets({ userIds: selectedUserIds, shopIds: selectedShopIds });
+    setShowSelectDestroyModal(false);
+  };
+
+  // ★変更: 選択されたUID・会場データのみを削除（最終確認モーダル経由）
+  const handleBulkDestroySelected = async () => {
+    if (!pendingDestroyTargets) return;
+    const { userIds, shopIds } = pendingDestroyTargets;
     try {
-      // attractions（会場・予約・待機列）を全削除
-      await Promise.all(attractions.map(shop => deleteDoc(doc(db, "attractions", shop.id))));
-      // users（UID・ニックネーム・BAN情報）を全削除
-      await Promise.all(users.map(user => deleteDoc(doc(db, "users", user.id))));
-      setExpandedShopId(null);
-      setShowDestroyModal(false);
-      alert("全会場データ・全UIDを削除しました。");
+      // 選択された attractions（会場・予約・待機列）を削除
+      await Promise.all(shopIds.map(id => deleteDoc(doc(db, "attractions", id))));
+      // 選択された users（UID・ニックネーム・BAN情報）を削除
+      await Promise.all(userIds.map(id => deleteDoc(doc(db, "users", id))));
+      if (shopIds.includes(expandedShopId || "")) setExpandedShopId(null);
+      setPendingDestroyTargets(null);
+      alert(`選択した shopIds.length件の会場・{userIds.length}件のUIDを削除しました。`);
     } catch (e) { alert("エラーが発生しました。"); }
   };
 
@@ -264,7 +420,7 @@ export default function SuperAdminPage() {
 
     try {
       if (isEditing && originalId && manualId !== originalId) {
-        if (!confirm(`会場IDを「${originalId}」から「${manualId}」に変更しますか？`)) return;
+        if (!confirm(`会場IDを「originalId」から「{manualId}」に変更しますか？`)) return;
         await setDoc(doc(db, "attractions", manualId), data);
         await deleteDoc(doc(db, "attractions", originalId));
         setExpandedShopId(manualId);
@@ -395,7 +551,7 @@ export default function SuperAdminPage() {
     const releaseDate = new Date(slotDate.getTime() - (relH * 60 + relM) * 60000);
     return {
       isReleased: now >= releaseDate,
-      releaseTimeStr: `${String(releaseDate.getHours()).padStart(2, '0')}:${String(releaseDate.getMinutes()).padStart(2, '0')} 解放`,
+      releaseTimeStr: `String(releaseDate.getHours()).padStart(2,'0'):{String(releaseDate.getMinutes()).padStart(2, '0')} 解放`,
     };
   };
 
@@ -403,6 +559,11 @@ export default function SuperAdminPage() {
     if (!shop?.slots) return [];
     return Object.keys(shop.slots).sort().filter(time => (shop.slots[time] ?? 0) < shop.capacity);
   };
+
+  // ★最終確認モーダルに表示する削除対象の要約テキスト
+  const destroySummaryText = pendingDestroyTargets
+    ? `UID ${pendingDestroyTargets.userIds.length}件・会場 ${pendingDestroyTargets.shopIds.length}件（該当する予約・待機列を含む）を完全に削除します。`
+    : "";
 
   // ════════════════════════════════════════════════
   //  RENDER
@@ -594,9 +755,9 @@ export default function SuperAdminPage() {
               <button onClick={() => handleBulkPause(true)} className="bg-red-900/50 hover:bg-red-800 text-red-200 border border-red-800 py-2 rounded text-xs font-bold transition">🛑 一斉停止</button>
               <button onClick={() => handleBulkPause(false)} className="bg-green-900/50 hover:bg-green-800 text-green-200 border border-green-800 py-2 rounded text-xs font-bold transition">▶️ 一斉再開</button>
               <button onClick={handleBulkDeleteReservations} className="bg-orange-900/50 hover:bg-orange-800 text-orange-200 border border-orange-800 py-2 rounded text-xs font-bold transition">🗑️ データ全削除</button>
-              {/* ★変更: 全UID・会場削除ボタン */}
+              {/* ★変更: 押すとまず選択モーダルが開く */}
               <button
-                onClick={() => setShowDestroyModal(true)}
+                onClick={() => setShowSelectDestroyModal(true)}
                 className="bg-gray-800 hover:bg-red-900/60 text-gray-400 hover:text-red-200 border border-gray-700 hover:border-red-700 py-2 rounded text-xs font-bold transition"
               >
                 💀 全UID・会場削除
@@ -848,13 +1009,25 @@ export default function SuperAdminPage() {
         </div>
       )}
 
-      {/* ── 全削除確認モーダル ── */}
-      {showDestroyModal && (
+      {/* ── 削除対象 選択モーダル ── */}
+      {showSelectDestroyModal && (
+        <SelectDestroyTargetsModal
+          users={users}
+          attractions={attractions}
+          onConfirm={handleSelectDestroyConfirm}
+          onCancel={() => setShowSelectDestroyModal(false)}
+        />
+      )}
+
+      {/* ── 全削除確認モーダル（最終確認） ── */}
+      {pendingDestroyTargets && (
         <DestroyModal
-          onConfirm={handleBulkDestroyAll}
-          onCancel={() => setShowDestroyModal(false)}
+          targetSummary={destroySummaryText}
+          onConfirm={handleBulkDestroySelected}
+          onCancel={() => setPendingDestroyTargets(null)}
         />
       )}
     </div>
   );
 }
+
