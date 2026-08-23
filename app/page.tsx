@@ -22,6 +22,14 @@ type Ticket = {
   peopleAhead?: number;
 };
 
+// ★「ピッ」1回の長さ（秒）と、2回目の「ピッ」が鳴り始めるまでのオフセット（秒）
+const TONE_DURATION = 0.15;
+const SECOND_TONE_OFFSET = 0.2;
+// ★「ピッピ」全体の長さ（ミリ秒）＝2回目のオフセット + 1回分の長さ
+const BEEP_TOTAL_MS = (SECOND_TONE_OFFSET + TONE_DURATION) * 1000;
+// ★「ピッピ」が鳴り終わってから次の「ピッピ」までの間隔（ミリ秒）
+const GAP_AFTER_BEEP_MS = 1000;
+
 export default function Home() {
   const [attractions, setAttractions] = useState<any[]>([]);
   const [myTickets, setMyTickets] = useState<Ticket[]>([]);
@@ -33,16 +41,23 @@ export default function Home() {
   const [enableSound, setEnableSound] = useState(false);
   const [enableVibrate, setEnableVibrate] = useState(false);
 
+  // ★個別チケットごとの音声停止管理（uniqueKeyのSet）
+  const [mutedTickets, setMutedTickets] = useState<Set<string>>(new Set());
+
   // ★QRコード関連のステート
   // qrTicket がセットされているときだけカメラモーダルを開く
   const [qrTicket, setQrTicket] = useState<Ticket | null>(null);
 
   // 音声再生用の参照 (Web Audio API)
   const audioCtxRef = useRef<AudioContext | null>(null);
+  // ★「ピッピ→1秒あける」ループの再スケジュール用タイマー参照
+  const loopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 申し込み画面用の状態
   const [draftBooking, setDraftBooking] = useState<{ time: string; remaining: number; mode: "slot" | "queue"; maxPeople: number } | null>(null);
   const [peopleCount, setPeopleCount] = useState<number>(1);
+  // ★満席で予約に失敗したかどうかのフラグ
+  const [bookingFailed, setBookingFailed] = useState(false);
 
   // ★現在時刻のステート（解放判定＆時計表示用）
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
@@ -55,12 +70,32 @@ export default function Home() {
     return () => clearInterval(timer);
   }, []);
 
-  // ★音を鳴らす関数
+  // ★単発の短いビープ音を指定した時刻(startTime)に鳴らすヘルパー
+  const playSingleTone = (ctx: AudioContext, startTime: number) => {
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    oscillator.type = 'sine';
+    // ★周波数は880Hzで固定（ピッチを下げる処理は削除）
+    oscillator.frequency.setValueAtTime(880, startTime);
+
+    gainNode.gain.setValueAtTime(0.5, startTime);
+    // 短い減衰（約0.12秒）で「ピッ」という短音にする
+    gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.12);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    oscillator.start(startTime);
+    oscillator.stop(startTime + TONE_DURATION);
+  };
+
+  // ★「ピピッ」という2連ビープを鳴らす関数
   const playBeep = () => {
     try {
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
         if (!AudioContextClass) return;
-        
+
         if (!audioCtxRef.current) {
             audioCtxRef.current = new AudioContextClass();
         }
@@ -69,21 +104,12 @@ export default function Home() {
         }
 
         const ctx = audioCtxRef.current;
-        const oscillator = ctx.createOscillator();
-        const gainNode = ctx.createGain();
+        const now = ctx.currentTime;
 
-        oscillator.type = 'sine'; 
-        oscillator.frequency.setValueAtTime(880, ctx.currentTime); 
-        oscillator.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5); 
-
-        gainNode.gain.setValueAtTime(0.5, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-
-        oscillator.connect(gainNode);
-        gainNode.connect(ctx.destination);
-
-        oscillator.start();
-        oscillator.stop(ctx.currentTime + 0.5);
+        // 1回目の「ピッ」
+        playSingleTone(ctx, now);
+        // 2回目の「ピッ」（0.2秒後、合計で「ピピッ」というリズムに）
+        playSingleTone(ctx, now + SECOND_TONE_OFFSET);
     } catch (e) {
         console.error("Audio play failed", e);
     }
@@ -96,6 +122,19 @@ export default function Home() {
          navigator.vibrate(200);
      }
      alert("テスト音再生中\n(マナーモードや音量設定を確認してください)");
+  };
+
+  // ★個別チケットの音声停止/再開を切り替える
+  const toggleMuteTicket = (uniqueKey: string) => {
+    setMutedTickets(prev => {
+      const next = new Set(prev);
+      if (next.has(uniqueKey)) {
+        next.delete(uniqueKey);
+      } else {
+        next.add(uniqueKey);
+      }
+      return next;
+    });
   };
 
   // 1. 初期化とデータ監視
@@ -196,19 +235,45 @@ export default function Home() {
   const activeTickets = myTickets.filter(t => ["reserved", "waiting", "ready"].includes(t.status));
 
   // ★通知ループ処理
+  // ・「ピッピ」を鳴らす → 鳴り終わってから正確に1秒あける → また「ピッピ」…を繰り返す（setTimeoutの再帰呼び出し）
+  // ・status が 'ready'（チケットが赤くなった状態）かつ「音声停止」されていないチケットが
+  //   1つでもあればループが有効
+  // ・入場処理でチケットが activeTickets から消える（＝消費される）と自動的に鳴り止む
   useEffect(() => {
-    const intervalId = setInterval(() => {
-      const hasReadyTicket = activeTickets.some(t => t.status === 'ready');
-      if (hasReadyTicket) {
+    const hasUnmutedReadyTicket = activeTickets.some(
+      t => t.status === 'ready' && !mutedTickets.has(t.uniqueKey)
+    );
+
+    const shouldRun = hasUnmutedReadyTicket && (enableSound || enableVibrate);
+
+    if (shouldRun) {
+      const loop = () => {
         if (enableSound) playBeep();
         if (enableVibrate && typeof navigator !== "undefined" && navigator.vibrate) {
             try { navigator.vibrate(200); } catch(e) { /* ignore */ }
         }
+        // ★「ピッピ」の再生（約0.35秒）が終わってから、正確に1秒後に次を鳴らす
+        loopTimeoutRef.current = setTimeout(loop, BEEP_TOTAL_MS + GAP_AFTER_BEEP_MS);
+      };
+      // まだループが動いていなければ開始する（重複起動を防止）
+      if (!loopTimeoutRef.current) {
+        loop();
       }
-    }, 1000); 
+    } else {
+      // 条件を満たさなくなったらループを止める
+      if (loopTimeoutRef.current) {
+        clearTimeout(loopTimeoutRef.current);
+        loopTimeoutRef.current = null;
+      }
+    }
 
-    return () => clearInterval(intervalId);
-  }, [activeTickets, enableSound, enableVibrate]);
+    return () => {
+      if (loopTimeoutRef.current) {
+        clearTimeout(loopTimeoutRef.current);
+        loopTimeoutRef.current = null;
+      }
+    };
+  }, [activeTickets, enableSound, enableVibrate, mutedTickets]);
 
 
   if (isBanned) {
@@ -236,6 +301,7 @@ export default function Home() {
     const maxPeople = shop.groupLimit || 10;
 
     setPeopleCount(1);
+    setBookingFailed(false);
     setDraftBooking({ time, remaining, mode: "slot", maxPeople });
   };
 
@@ -247,6 +313,7 @@ export default function Home() {
     const maxPeople = shop.groupLimit || 10;
 
     setPeopleCount(1);
+    setBookingFailed(false);
     setDraftBooking({ time: "順番待ち", remaining: 999, mode: "queue", maxPeople });
   };
 
@@ -256,10 +323,22 @@ export default function Home() {
     if (!confirm(`${selectedShop.name}\n${draftBooking.mode === "queue" ? "並びますか？" : "予約しますか？"}\n人数: ${peopleCount}名`)) return;
 
     try {
-      const timestamp = Date.now();
       const shopRef = doc(db, "attractions", selectedShop.id);
       
       if (draftBooking.mode === "slot") {
+        // ★予約確定の直前に最新の空き状況を再確認（枠が埋まっていないかチェック）
+        const latestSnap = await getDoc(shopRef);
+        const latestData = latestSnap.data();
+        const currentCount = latestData?.slots?.[draftBooking.time] || 0;
+        const limitGroups = latestData?.capacity || 0;
+
+        if (currentCount >= limitGroups) {
+          // 満席になっていた場合は予約せずにエラー表示に切り替える
+          setBookingFailed(true);
+          return;
+        }
+
+        const timestamp = Date.now();
         const reservationData = { userId, time: draftBooking.time, timestamp, status: "reserved", count: peopleCount };
         await updateDoc(shopRef, { 
             [`slots.${draftBooking.time}`]: increment(1),
@@ -292,6 +371,7 @@ export default function Home() {
       }
       setDraftBooking(null);
       setSelectedShop(null);
+      setBookingFailed(false);
     } catch (e) { 
       console.error(e);
       alert("エラーが発生しました。もう一度お試しください。"); 
@@ -429,6 +509,7 @@ export default function Home() {
           <p className="text-blue-900 text-sm font-bold">🎟️ あなたのチケット</p>
           {activeTickets.map((t) => {
             const isReady = t.status === 'ready';
+            const isMuted = mutedTickets.has(t.uniqueKey);
             const cardClass = isReady 
               ? "bg-red-50 border-l-4 border-red-500 shadow-xl ring-2 ring-red-400 animate-pulse-slow" 
               : "bg-white border-l-4 border-green-500 shadow-lg";
@@ -461,7 +542,19 @@ export default function Home() {
                       {t.isQueue && (
                           <div className="mt-2">
                               {isReady ? (
-                                <p className="text-red-600 font-bold text-lg animate-bounce">🔔 呼び出し中です！</p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="text-red-600 font-bold text-lg animate-bounce">🔔 呼び出し中です！</p>
+                                  {/* ★音声停止/再開ボタン */}
+                                  <button
+                                    onClick={() => toggleMuteTicket(t.uniqueKey)}
+                                    className={`text-xs font-bold px-2 py-1 rounded-full border transition-colors
+                                      ${isMuted 
+                                        ? "bg-gray-100 text-gray-500 border-gray-300" 
+                                        : "bg-white text-red-600 border-red-300 hover:bg-red-50"}`}
+                                  >
+                                    {isMuted ? "🔔 音声再開" : "🔕 音声停止"}
+                                  </button>
+                                </div>
                               ) : (
                                 <p className="text-blue-600 font-bold text-sm">
                                   あなたの前に <span className="text-xl text-blue-800">{t.peopleAhead}</span> 組待ち
@@ -564,7 +657,7 @@ export default function Home() {
                )}
 
                <button 
-                 onClick={() => { setSelectedShop(null); setDraftBooking(null); }} 
+                 onClick={() => { setSelectedShop(null); setDraftBooking(null); setBookingFailed(false); }} 
                  className={`absolute ${selectedShop.imageUrl ? "top-14" : "top-3"} left-3 bg-black/50 text-white px-4 py-2 rounded-full text-sm backdrop-blur-md z-10 hover:bg-black/70 transition`}
                >
                  ← 戻る
@@ -633,7 +726,7 @@ export default function Home() {
 
                                      if (currentTime < releaseDate) {
                                          isLocked = true;
-                                         releaseTimeStr = `${String(releaseDate.getHours()).padStart(2, '0')}:${String(releaseDate.getMinutes()).padStart(2, '0')} 解放`;
+                                         releaseTimeStr = `String(releaseDate.getHours()).padStart(2,'0'):{String(releaseDate.getMinutes()).padStart(2, '0')} 解放`;
                                      }
                                  }
 
@@ -676,24 +769,40 @@ export default function Home() {
               <p className="text-center text-sm font-bold text-gray-500 mb-1">{selectedShop.department}</p>
               <p className="text-center font-bold text-xl mb-4">{selectedShop.name}</p>
               
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                  人数を選択してください
-              </label>
-              <select 
-                  value={peopleCount} 
-                  onChange={(e) => setPeopleCount(Number(e.target.value))}
-                  className="w-full text-lg p-3 border-2 border-gray-200 rounded-lg mb-6"
-              >
-                  {[...Array(draftBooking.maxPeople)].map((_, i) => (
-                      <option key={i+1} value={i+1}>{i+1}名</option>
-                  ))}
-              </select>
+              {bookingFailed ? (
+                // ★満席で予約できなかった場合のお詫びメッセージ
+                <p className="text-center text-red-600 font-bold text-sm mb-6 bg-red-50 border border-red-200 rounded-lg p-3 leading-relaxed">
+                    満員になったため予約することができませんでした。申し訳ございません。
+                </p>
+              ) : (
+                <>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                      人数を選択してください
+                  </label>
+                  <select 
+                      value={peopleCount} 
+                      onChange={(e) => setPeopleCount(Number(e.target.value))}
+                      className="w-full text-lg p-3 border-2 border-gray-200 rounded-lg mb-6"
+                  >
+                      {[...Array(draftBooking.maxPeople)].map((_, i) => (
+                          <option key={i+1} value={i+1}>{i+1}名</option>
+                      ))}
+                  </select>
+                </>
+              )}
 
-              <div className="flex gap-3">
-                  <button onClick={() => setDraftBooking(null)} className="flex-1 py-3 bg-gray-100 rounded-lg font-bold text-gray-500">やめる</button>
-                  <button onClick={handleConfirmBooking} className={`flex-1 py-3 text-white font-bold rounded-lg shadow ${draftBooking.mode === "queue" ? "bg-orange-500" : "bg-blue-600"}`}>
-                      {draftBooking.mode === "queue" ? "発券する" : "予約する"}
+              <div className={`flex gap-3 ${bookingFailed ? "justify-center" : ""}`}>
+                  <button 
+                    onClick={() => { setDraftBooking(null); setBookingFailed(false); }} 
+                    className={`${bookingFailed ? "w-1/2" : "flex-1"} py-3 bg-gray-100 rounded-lg font-bold text-gray-500`}
+                  >
+                    やめる
                   </button>
+                  {!bookingFailed && (
+                    <button onClick={handleConfirmBooking} className={`flex-1 py-3 text-white font-bold rounded-lg shadow ${draftBooking.mode === "queue" ? "bg-orange-500" : "bg-blue-600"}`}>
+                        {draftBooking.mode === "queue" ? "発券する" : "予約する"}
+                    </button>
+                  )}
               </div>
             </div>
           </div>
@@ -738,3 +847,5 @@ export default function Home() {
     </div>
   );
 }
+
+
