@@ -14,8 +14,24 @@ const convertGoogleDriveLink = (url: string) => {
   } catch (e) { return url; }
 };
 
+// ハッシュタグ抽出関数（X/旧Twitter仕様に準拠）
+const extractTags = (text: string) => {
+  // 全角シャープを半角に、全角スペースを半角スペースに変換
+  const normalized = text.replace(/＃/g, '#').replace(/ /g, ' ');
+  // #に続き、英数字、アンダースコア、日本語（ひらがな、カタカナ、漢字など）が連続する部分を抽出
+  const regex = /#([a-zA-Z0-9_ぁ-んァ-ヶｱ-ﾝﾞﾟ一-龠]+)/g;
+  const tags: string[] = [];
+  let match;
+  while ((match = regex.exec(normalized)) !== null) {
+    if (!tags.includes(match[1])) {
+      tags.push(match[1]);
+    }
+  }
+  return tags;
+};
+
 // ─────────────────────────────────────────
-//  ★削除対象 選択モーダル（UID・会場をチェックリストで選択）
+// ★削除対象 選択モーダル（UID・会場をチェックリストで選択）
 // ─────────────────────────────────────────
 function SelectDestroyTargetsModal({
   users,
@@ -159,7 +175,7 @@ function SelectDestroyTargetsModal({
 }
 
 // ─────────────────────────────────────────
-//  全削除確認モーダル（最終確認）
+// 全削除確認モーダル（最終確認）
 // ─────────────────────────────────────────
 function DestroyModal({
   targetSummary,
@@ -171,7 +187,6 @@ function DestroyModal({
   onCancel: () => void;
 }) {
   const [code] = useState(() => {
-    // 6桁の乱数（数字）を生成
     return String(Math.floor(100000 + Math.random() * 900000));
   });
   const [input, setInput] = useState("");
@@ -235,11 +250,11 @@ function DestroyModal({
 }
 
 // ─────────────────────────────────────────
-//  メインコンポーネント
+// メインコンポーネント
 // ─────────────────────────────────────────
 export default function SuperAdminPage() {
   const [attractions, setAttractions] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]); // users collection
+  const [users, setUsers] = useState<any[]>([]);
   const [myUserId, setMyUserId] = useState("");
 
   const [expandedShopId, setExpandedShopId] = useState<string | null>(null);
@@ -253,6 +268,7 @@ export default function SuperAdminPage() {
   const [department, setDepartment] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [description, setDescription] = useState("");
+  const [hashtagInput, setHashtagInput] = useState(""); // ★追加：ハッシュタグ入力用
   const [groupLimit, setGroupLimit] = useState(4);
   const [openTime, setOpenTime] = useState("10:00");
   const [closeTime, setCloseTime] = useState("15:00");
@@ -264,7 +280,6 @@ export default function SuperAdminPage() {
 
   const [searchUserId, setSearchUserId] = useState("");
   const [now, setNow] = useState(new Date());
-  const [guestTime, setGuestTime] = useState("");
 
   // ★ゲスト枠追加モーダル
   const [guestModalShopId, setGuestModalShopId] = useState<string | null>(null);
@@ -341,14 +356,12 @@ export default function SuperAdminPage() {
     setShowSelectDestroyModal(false);
   };
 
-  // ★変更: 選択されたUID・会場データのみを削除（最終確認モーダル経由）
+  // ★選択されたUID・会場データのみを削除（最終確認モーダル経由）
   const handleBulkDestroySelected = async () => {
     if (!pendingDestroyTargets) return;
     const { userIds, shopIds } = pendingDestroyTargets;
     try {
-      // 選択された attractions（会場・予約・待機列）を削除
       await Promise.all(shopIds.map(id => deleteDoc(doc(db, "attractions", id))));
-      // 選択された users（UID・ニックネーム・BAN情報）を削除
       await Promise.all(userIds.map(id => deleteDoc(doc(db, "users", id))));
       if (shopIds.includes(expandedShopId || "")) setExpandedShopId(null);
       setPendingDestroyTargets(null);
@@ -361,6 +374,7 @@ export default function SuperAdminPage() {
     setIsEditing(false); setOriginalId(null);
     setManualId(""); setNewName(""); setPassword("");
     setDepartment(""); setImageUrl(""); setDescription("");
+    setHashtagInput(""); // ★追加
     setGroupLimit(4); setOpenTime("10:00"); setCloseTime("15:00");
     setDuration(20); setCapacity(3); setIsPaused(false);
     setReleaseBeforeTime("00:00"); setIsQueueMode(false);
@@ -370,6 +384,8 @@ export default function SuperAdminPage() {
     setIsEditing(true); setOriginalId(shop.id);
     setManualId(shop.id); setNewName(shop.name); setPassword(shop.password);
     setDepartment(shop.department || ""); setImageUrl(shop.imageUrl || ""); setDescription(shop.description || "");
+    // ★追加：保存されているタグ配列を文字列に戻して入力欄へ
+    setHashtagInput((shop.tags || []).map((t: string) => "#" + t).join(" "));
     setGroupLimit(shop.groupLimit || 4); setOpenTime(shop.openTime);
     setCloseTime(shop.closeTime); setDuration(shop.duration);
     setCapacity(shop.capacity); setIsPaused(shop.isPaused || false);
@@ -391,6 +407,7 @@ export default function SuperAdminPage() {
       if (currentShop) {
         existingReservations = currentShop.reservations || [];
         existingQueue = currentShop.queue || [];
+        // 時間やdurationが変更されたかをチェック
         if (currentShop.openTime === openTime && currentShop.closeTime === closeTime && currentShop.duration === duration) {
           slots = currentShop.slots || {}; shouldResetSlots = false;
         } else {
@@ -405,15 +422,22 @@ export default function SuperAdminPage() {
       slots = {};
       while (current < end) {
         const timeStr = current.toTimeString().substring(0, 5);
-        slots = { ...slots, [timeStr]: 0 };
+        slots[timeStr] = 0;
         current.setMinutes(current.getMinutes() + duration);
       }
+      // 枠を作り直す場合、枠に紐づいていた予約情報も同時にクリア
+      if (isEditing) {
+        existingReservations = [];
+      }
     }
+
+    // ★追加：抽出したタグの配列をデータに含める
+    const tags = extractTags(hashtagInput);
 
     const data: any = {
       name: newName, password, groupLimit, department, imageUrl, description,
       openTime, closeTime, duration, capacity, isPaused, slots,
-      isQueueMode, releaseBeforeTime,
+      isQueueMode, releaseBeforeTime, tags, // ←ここ
       reservations: isEditing ? existingReservations : [],
       queue: isEditing ? existingQueue : [],
     };
@@ -421,11 +445,13 @@ export default function SuperAdminPage() {
     try {
       if (isEditing && originalId && manualId !== originalId) {
         if (!confirm(`会場IDを「originalId」から「{manualId}」に変更しますか？`)) return;
+        // 古い slots がマージされないよう { merge: true } なしでsetDoc
         await setDoc(doc(db, "attractions", manualId), data);
         await deleteDoc(doc(db, "attractions", originalId));
         setExpandedShopId(manualId);
       } else {
-        await setDoc(doc(db, "attractions", manualId), data, { merge: true });
+        // { merge: true } を外し、slots オブジェクトを完全置換（上書き）して消去・再作成する
+        await setDoc(doc(db, "attractions", manualId), data);
         if (isEditing) setExpandedShopId(manualId);
       }
       alert(isEditing ? "更新しました" : "作成しました");
@@ -449,7 +475,7 @@ export default function SuperAdminPage() {
   const cancelReservation = async (shop: any, res: any) => {
     if (!confirm(`User ID: ${res.userId}\nこの予約を削除しますか？`)) return;
     const otherRes = shop.reservations.filter((r: any) => r.timestamp !== res.timestamp);
-    const updatedSlots = { ...shop.slots, [res.time]: Math.max(0, shop.slots[res.time] - 1) };
+    const updatedSlots = { ...shop.slots, [res.time]: Math.max(0, (shop.slots[res.time] || 0) - 1) };
     await updateDoc(doc(db, "attractions", shop.id), { reservations: otherRes, slots: updatedSlots });
   };
 
@@ -566,7 +592,7 @@ export default function SuperAdminPage() {
     : "";
 
   // ════════════════════════════════════════════════
-  //  RENDER
+  // RENDER
   // ════════════════════════════════════════════════
   return (
     <div className="min-h-screen bg-gray-900 text-white font-sans">
@@ -630,6 +656,31 @@ export default function SuperAdminPage() {
                 <label className="text-xs text-gray-400 mb-1 block">会場説明文 <span className="text-gray-500 text-[10px] border border-gray-600 px-1 rounded ml-1">任意・最大500文字</span></label>
                 <textarea className="w-full bg-gray-700 p-2 rounded text-white h-24 text-sm border border-gray-600 focus:border-blue-500 outline-none resize-none" maxLength={500} value={description} onChange={e => setDescription(e.target.value)} />
                 <div className="text-right text-xs text-gray-500">{description.length}/500</div>
+              </div>
+
+              {/* ハッシュタグ (編集用) */}
+              <div className="mb-4 bg-gray-900/30 p-3 rounded border border-gray-600">
+                <label className="text-xs font-bold text-gray-400 mb-2 block uppercase tracking-wider">ハッシュタグ <span className="text-gray-500 text-[10px] normal-case border border-gray-600 px-1 rounded ml-1">任意・最大100文字</span></label>
+                {/* プレビュー表示 */}
+                <div className="flex flex-wrap gap-2 mb-2 min-h-[24px]">
+                  {extractTags(hashtagInput).length > 0 ? (
+                    extractTags(hashtagInput).map(tag => (
+                      <span key={tag} className="bg-blue-900/60 text-blue-300 border border-blue-700 px-3 py-0.5 rounded-full text-xs font-bold">
+                        #{tag}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-gray-500 flex items-center">認識されたタグがここに表示されます</span>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  className="w-full bg-gray-700 p-2 rounded text-white border border-gray-600 focus:border-blue-500 outline-none text-sm font-mono"
+                  maxLength={100}
+                  placeholder="例: #ホラー (スペースで区切って「#」を付けて。複数OK 全角OK)"
+                  value={hashtagInput}
+                  onChange={e => setHashtagInput(e.target.value)}
+                />
               </div>
 
               {/* 運用モード */}
@@ -699,6 +750,31 @@ export default function SuperAdminPage() {
                   <div className="text-right text-xs text-gray-500">{description.length}/500</div>
                 </div>
 
+                {/* ハッシュタグ (新規作成用) */}
+                <div className="bg-gray-900 p-3 rounded border border-gray-600">
+                  <label className="text-xs font-bold text-gray-400 mb-2 block uppercase">ハッシュタグ <span className="text-gray-500 text-[10px] normal-case">任意・最大100文字</span></label>
+                  {/* プレビュー表示 */}
+                  <div className="flex flex-wrap gap-2 mb-2 min-h-[24px]">
+                    {extractTags(hashtagInput).length > 0 ? (
+                      extractTags(hashtagInput).map(tag => (
+                        <span key={tag} className="bg-blue-900/60 text-blue-300 border border-blue-700 px-3 py-0.5 rounded-full text-xs font-bold">
+                          #{tag}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-gray-500 flex items-center">認識されたタグがここに表示されます</span>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    className="w-full bg-gray-700 p-2 rounded text-white border border-gray-600 outline-none text-sm font-mono"
+                    maxLength={100}
+                    placeholder="例: 楽しい #お化け屋敷 #3年A組"
+                    value={hashtagInput}
+                    onChange={e => setHashtagInput(e.target.value)}
+                  />
+                </div>
+
                 {/* 運用モード (新規) */}
                 <div className="bg-gray-900 p-3 rounded border border-gray-600">
                   <label className="text-xs text-gray-400 mb-2 block font-bold">運用モード</label>
@@ -755,7 +831,6 @@ export default function SuperAdminPage() {
               <button onClick={() => handleBulkPause(true)} className="bg-red-900/50 hover:bg-red-800 text-red-200 border border-red-800 py-2 rounded text-xs font-bold transition">🛑 一斉停止</button>
               <button onClick={() => handleBulkPause(false)} className="bg-green-900/50 hover:bg-green-800 text-green-200 border border-green-800 py-2 rounded text-xs font-bold transition">▶️ 一斉再開</button>
               <button onClick={handleBulkDeleteReservations} className="bg-orange-900/50 hover:bg-orange-800 text-orange-200 border border-orange-800 py-2 rounded text-xs font-bold transition">🗑️ データ全削除</button>
-              {/* ★変更: 押すとまず選択モーダルが開く */}
               <button
                 onClick={() => setShowSelectDestroyModal(true)}
                 className="bg-gray-800 hover:bg-red-900/60 text-gray-400 hover:text-red-200 border border-gray-700 hover:border-red-700 py-2 rounded text-xs font-bold transition"
@@ -844,6 +919,16 @@ export default function SuperAdminPage() {
                 {/* 説明文 */}
                 {targetShop.description && (
                   <div className="bg-gray-700/50 p-4 rounded-lg border border-gray-600 text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">{targetShop.description}</div>
+                )}
+                {/* ハッシュタグ（詳細表示） */}
+                {targetShop.tags && targetShop.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {targetShop.tags.map((tag: string) => (
+                      <span key={tag} className="bg-blue-900/60 text-blue-300 border border-blue-700 px-3 py-0.5 rounded-full text-xs font-bold">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
                 )}
 
                 {/* ゲスト枠ボタン */}
@@ -1030,4 +1115,5 @@ export default function SuperAdminPage() {
     </div>
   );
 }
+
 
