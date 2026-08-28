@@ -577,7 +577,7 @@ export default function SuperAdminPage() {
     const releaseDate = new Date(slotDate.getTime() - (relH * 60 + relM) * 60000);
     return {
       isReleased: now >= releaseDate,
-      releaseTimeStr: `String(releaseDate.getHours()).padStart(2,'0'):{String(releaseDate.getMinutes()).padStart(2, '0')} 解放`,
+      releaseTimeStr: `${String(releaseDate.getHours()).padStart(2, '0')}:${String(releaseDate.getMinutes()).padStart(2, '0')} 解放`,
     };
   };
 
