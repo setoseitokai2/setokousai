@@ -753,7 +753,7 @@ export default function Home() {
 
                         if (currentTime < releaseDate) {
                           isLocked = true;
-                          releaseTimeStr: `${String(releaseDate.getHours()).padStart(2, '0')}:${String(releaseDate.getMinutes()).padStart(2, '0')} 解放`,
+                          releaseTimeStr = `${String(releaseDate.getHours()).padStart(2,'0')}:${String(releaseDate.getMinutes()).padStart(2, '0')} 解放`;
                         }
                       }
 
