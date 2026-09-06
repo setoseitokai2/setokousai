@@ -2,7 +2,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { db, auth } from "../firebase";
-import { collection, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, increment, getDoc, setDoc, serverTimestamp, Timestamp } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, increment, getDoc, setDoc, serverTimestamp, Timestamp, runTransaction } from "firebase/firestore";
 import { signInAnonymously } from "firebase/auth";
 import { QrReader } from 'react-qr-reader';
 
@@ -59,6 +59,7 @@ export default function Home() {
   const [peopleCount, setPeopleCount] = useState<number>(1);
   const [bookingFailed, setBookingFailed] = useState(false);
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -235,51 +236,105 @@ export default function Home() {
   };
 
   const handleConfirmBooking = async () => {
-    if (!selectedShop || !draftBooking) return;
-    if (!confirm(`${selectedShop.name}\n${draftBooking.mode === "queue" ? "並びますか？" : "予約しますか？"}\n人数: ${peopleCount}名`)) return;
+ if (!selectedShop || !draftBooking || isSubmitting) return;
+ if (!confirm(`${selectedShop.name}\n${draftBooking.mode === "queue" ? "並びますか？" : "予約しますか？"}\n人数: ${peopleCount}名`)) return;
 
-    try {
-      const shopRef = doc(db, "attractions", selectedShop.id);
-      if (draftBooking.mode === "slot") {
-        const latestSnap = await getDoc(shopRef);
-        const latestData = latestSnap.data();
-        const currentCount = latestData?.slots?.[draftBooking.time] || 0;
-        const limitGroups = latestData?.capacity || 0;
+ setIsSubmitting(true);
+ try {
+ const shopRef = doc(db, "attractions", selectedShop.id);
 
-        if (currentCount >= limitGroups) {
-          setBookingFailed(true);
-          return;
-        }
+ if (draftBooking.mode === "slot") {
+ let isFull = false;
+ await runTransaction(db, async (transaction) => {
+ const shopDoc = await transaction.get(shopRef);
+ if (!shopDoc.exists()) throw new Error("店舗が存在しません");
 
-        const timestamp = Date.now();
-        const reservationData = { userId, time: draftBooking.time, timestamp, status: "reserved", count: peopleCount };
-        await updateDoc(shopRef, { 
-          [`slots.${draftBooking.time}`]: increment(1),
-          reservations: arrayUnion(reservationData)
-        });
-      } else {
-        const shopSnap = await getDoc(shopRef);
-        const currentQueue = shopSnap.data()?.queue || [];
-        let maxId = 0;
-        currentQueue.forEach((q: any) => {
-          const num = parseInt(q.ticketId || "0");
-          if (num > maxId) maxId = num;
-        });
-        const nextIdNum = maxId + 1;
-        const nextTicketId = String(nextIdNum).padStart(6, '0');
+ const data = shopDoc.data();
+ const currentCount = data?.slots?.[draftBooking.time] || 0;
+ const limitGroups = data?.capacity || 0;
 
-        const queueData = { userId, ticketId: nextTicketId, count: peopleCount, status: "waiting", createdAt: Timestamp.now() };
-        await updateDoc(shopRef, { queue: arrayUnion(queueData) });
-        alert(`発券しました！\n番号: ${nextTicketId}`);
-      }
-      setDraftBooking(null);
-      setSelectedShop(null);
-      setBookingFailed(false);
-    } catch (e) { 
-      console.error(e);
-      alert("エラーが発生しました。もう一度お試しください。"); 
-    }
-  };
+ if (currentCount >= limitGroups) {
+ isFull = true;
+ return;
+ }
+
+ const currentReservations = data.reservations || [];
+ // 自デバイスの同時間帯の過去重複予約をクリーンアップ
+ const cleanedReservations = currentReservations.filter(
+ (r: any) => !(r.userId === userId && r.time === draftBooking.time && r.status === "reserved")
+ );
+
+ const timestamp = Date.now();
+ const newReservation = {
+ userId,
+ time: draftBooking.time,
+ timestamp,
+ status: "reserved",
+ count: peopleCount
+ };
+
+ transaction.update(shopRef, {
+ [`slots.${draftBooking.time}`]: currentCount + 1,
+ reservations: [...cleanedReservations, newReservation]
+ });
+ });
+
+ if (isFull) {
+ setBookingFailed(true);
+ setIsSubmitting(false);
+ return;
+ }
+ } else {
+ let assignedTicketId = "";
+ await runTransaction(db, async (transaction) => {
+ const shopDoc = await transaction.get(shopRef);
+ if (!shopDoc.exists()) throw new Error("店舗が存在しません");
+
+ const data = shopDoc.data();
+ const currentQueue = data.queue || [];
+
+ // 自デバイスの待ち状態の過去重複整理券をクリーンアップ
+ const cleanedQueue = currentQueue.filter(
+ (q: any) => !(q.userId === userId && q.status === "waiting")
+ );
+
+ let maxId = 0;
+ currentQueue.forEach((q: any) => {
+ const num = parseInt(q.ticketId || "0");
+ if (num > maxId) maxId = num;
+ });
+
+ const nextTicketId = String(maxId + 1).padStart(6, '0');
+ assignedTicketId = nextTicketId;
+
+ const newQueueItem = {
+ userId,
+ ticketId: nextTicketId,
+ count: peopleCount,
+ status: "waiting",
+ createdAt: Timestamp.now()
+ };
+
+ transaction.update(shopRef, {
+ queue: [...cleanedQueue, newQueueItem]
+ });
+ });
+
+ if (assignedTicketId) {
+ alert(`発券しました！\n番号: ${assignedTicketId}`);
+ }
+ }
+
+ setDraftBooking(null);
+ setSelectedShop(null);
+ setBookingFailed(false);
+ } catch (e) {
+ console.error(e);
+ alert("エラーが発生しました。もう一度お試しください。");
+ } finally {
+ setIsSubmitting(false);
+ }
+ };
 
   const handleCancel = async (ticket: Ticket) => {
     if (!confirm("キャンセルしますか？")) return;
@@ -824,9 +879,13 @@ export default function Home() {
                   やめる
                 </button>
                 {!bookingFailed && (
-                  <button onClick={handleConfirmBooking} className={`flex-1 py-3 text-white font-bold rounded-lg shadow ${draftBooking.mode === "queue" ? "bg-orange-500" : "bg-blue-600"}`}>
-                    {draftBooking.mode === "queue" ? "発券する" : "予約する"}
-                  </button>
+                  <button  
+                   onClick={handleConfirmBooking} 
+                   disabled={isSubmitting}
+                   className={`flex-1 py-3 text-white font-bold rounded-lg shadow ${draftBooking.mode === "queue" ? "bg-orange-500" : "bg-blue-600"} ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}
+                   >
+                   {isSubmitting ? "処理中..." : (draftBooking.mode === "queue" ? "発券する" : "予約する")}
+                   </button>
                 )}
               </div>
             </div>
