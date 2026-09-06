@@ -235,106 +235,116 @@ export default function Home() {
     setDraftBooking({ time: "順番待ち", remaining: 999, mode: "queue", maxPeople });
   };
 
-  const handleConfirmBooking = async () => {
- if (!selectedShop || !draftBooking || isSubmitting) return;
- if (!confirm(`${selectedShop.name}\n${draftBooking.mode === "queue" ? "並びますか？" : "予約しますか？"}\n人数: ${peopleCount}名`)) return;
+const handleConfirmBooking = async () => {
+    if (!selectedShop || !draftBooking || isSubmitting) return;
+    if (!confirm(`${selectedShop.name}\n${draftBooking.mode === "queue" ? "並びますか？" : "予約しますか？"}\n人数: ${peopleCount}名`)) return;
 
- setIsSubmitting(true);
- try {
- const shopRef = doc(db, "attractions", selectedShop.id);
+    setIsSubmitting(true);
+    try {
+      const shopRef = doc(db, "attractions", selectedShop.id);
 
- if (draftBooking.mode === "slot") {
- let isFull = false;
- await runTransaction(db, async (transaction) => {
- const shopDoc = await transaction.get(shopRef);
- if (!shopDoc.exists()) throw new Error("店舗が存在しません");
+      if (draftBooking.mode === "slot") {
+        let isFull = false;
+        await runTransaction(db, async (transaction) => {
+          const shopDoc = await transaction.get(shopRef);
+          if (!shopDoc.exists()) throw new Error("店舗が存在しません");
 
- const data = shopDoc.data();
- const currentCount = data?.slots?.[draftBooking.time] || 0;
- const limitGroups = data?.capacity || 0;
+          const data = shopDoc.data();
+          const currentCount = data?.slots?.[draftBooking.time] || 0;
+          const limitGroups = data?.capacity || 0;
 
- if (currentCount >= limitGroups) {
- isFull = true;
- return;
- }
+          if (currentCount >= limitGroups) {
+            isFull = true;
+            return;
+          }
 
- const currentReservations = data.reservations || [];
- // 自デバイスの同時間帯の過去重複予約をクリーンアップ
- const cleanedReservations = currentReservations.filter(
- (r: any) => !(r.userId === userId && r.time === draftBooking.time && r.status === "reserved")
- );
+          const currentReservations = data.reservations || [];
+          
+          // 1. 消去される過去の重複予約の件数をカウント
+          const removedCount = currentReservations.filter(
+            (r: any) => r.userId === userId && r.time === draftBooking.time && r.status === "reserved"
+          ).length;
 
- const timestamp = Date.now();
- const newReservation = {
- userId,
- time: draftBooking.time,
- timestamp,
- status: "reserved",
- count: peopleCount
- };
+          // 2. 自デバイスの同時間帯の過去重複予約を取り除く
+          const cleanedReservations = currentReservations.filter(
+            (r: any) => !(r.userId === userId && r.time === draftBooking.time && r.status === "reserved")
+          );
 
- transaction.update(shopRef, {
- [`slots.${draftBooking.time}`]: currentCount + 1,
- reservations: [...cleanedReservations, newReservation]
- });
- });
+          const timestamp = Date.now();
+          const newReservation = {
+            userId,
+            time: draftBooking.time,
+            timestamp,
+            status: "reserved",
+            count: peopleCount
+          };
 
- if (isFull) {
- setBookingFailed(true);
- setIsSubmitting(false);
- return;
- }
- } else {
- let assignedTicketId = "";
- await runTransaction(db, async (transaction) => {
- const shopDoc = await transaction.get(shopRef);
- if (!shopDoc.exists()) throw new Error("店舗が存在しません");
+          // 3. 元のカウントから消去分(removedCount)を減らし、新しい予約分(+1)を加算
+          const updatedSlotCount = Math.max(0, currentCount - removedCount + 1);
 
- const data = shopDoc.data();
- const currentQueue = data.queue || [];
+          transaction.update(shopRef, {
+            [`slots.${draftBooking.time}`]: updatedSlotCount,
+            reservations: [...cleanedReservations, newReservation]
+          });
+        });
 
- // 自デバイスの待ち状態の過去重複整理券をクリーンアップ
- const cleanedQueue = currentQueue.filter(
- (q: any) => !(q.userId === userId && q.status === "waiting")
- );
+        if (isFull) {
+          setBookingFailed(true);
+          setIsSubmitting(false);
+          return;
+        }
+      } else {
+        let assignedTicketId = "";
+        await runTransaction(db, async (transaction) => {
+          const shopDoc = await transaction.get(shopRef);
+          if (!shopDoc.exists()) throw new Error("店舗が存在しません");
 
- let maxId = 0;
- currentQueue.forEach((q: any) => {
- const num = parseInt(q.ticketId || "0");
- if (num > maxId) maxId = num;
- });
+          const data = shopDoc.data();
+          const currentQueue = data.queue || [];
 
- const nextTicketId = String(maxId + 1).padStart(6, '0');
- assignedTicketId = nextTicketId;
+          // 自デバイスの待ち状態の過去重複整理券をクリーンアップ
+          const cleanedQueue = currentQueue.filter(
+            (q: any) => !(q.userId === userId && q.status === "waiting")
+          );
 
- const newQueueItem = {
- userId,
- ticketId: nextTicketId,
- count: peopleCount,
- status: "waiting",
- createdAt: Timestamp.now()
- };
+          let maxId = 0;
+          currentQueue.forEach((q: any) => {
+            const num = parseInt(q.ticketId || "0");
+            if (num > maxId) maxId = num;
+          });
 
- transaction.update(shopRef, {
- queue: [...cleanedQueue, newQueueItem]
- });
- });
+          const nextTicketId = String(maxId + 1).padStart(6, '0');
+          assignedTicketId = nextTicketId;
 
- if (assignedTicketId) {
- alert(`発券しました！\n番号: ${assignedTicketId}`);
- }
- }
+          const newQueueItem = {
+            userId,
+            ticketId: nextTicketId,
+            count: peopleCount,
+            status: "waiting",
+            createdAt: Timestamp.now()
+          };
 
- setDraftBooking(null);
- setSelectedShop(null);
- setBookingFailed(false);
- } catch (e) {
- console.error(e);
- alert("エラーが発生しました。もう一度お試しください。");
- } finally {
- setIsSubmitting(false);
- }
- };
+          transaction.update(shopRef, {
+            queue: [...cleanedQueue, newQueueItem]
+          });
+        });
+
+        if (assignedTicketId) {
+          alert(`発券しました！\n番号: ${assignedTicketId}`);
+        }
+      }
+
+      setDraftBooking(null);
+      setSelectedShop(null);
+      setBookingFailed(false);
+    } catch (e) {
+      console.error(e);
+      alert("エラーが発生しました。もう一度お試しください。");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
 
   const handleCancel = async (ticket: Ticket) => {
     if (!confirm("キャンセルしますか？")) return;
