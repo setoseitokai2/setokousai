@@ -266,7 +266,8 @@ export default function SuperAdminPage() {
   const [newName, setNewName] = useState("");
   const [password, setPassword] = useState("");
   const [department, setDepartment] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [iconUrl, setIconUrl] = useState("");
+　const [headerUrl, setHeaderUrl] = useState("");
   const [description, setDescription] = useState("");
   const [hashtagInput, setHashtagInput] = useState(""); // ★追加：ハッシュタグ入力用
   const [groupLimit, setGroupLimit] = useState(4);
@@ -383,7 +384,8 @@ export default function SuperAdminPage() {
   const startEdit = (shop: any) => {
     setIsEditing(true); setOriginalId(shop.id);
     setManualId(shop.id); setNewName(shop.name); setPassword(shop.password);
-    setDepartment(shop.department || ""); setImageUrl(shop.imageUrl || ""); setDescription(shop.description || "");
+    setDepartment(shop.department || ""); setIconUrl(shop.iconUrl || shop.imageUrl || "");
+setHeaderUrl(shop.headerUrl || shop.imageUrl || ""); setDescription(shop.description || "");
     // ★追加：保存されているタグ配列を文字列に戻して入力欄へ
     setHashtagInput((shop.tags || []).map((t: string) => "#" + t).join(" "));
     setGroupLimit(shop.groupLimit || 4); setOpenTime(shop.openTime);
@@ -646,10 +648,13 @@ export default function SuperAdminPage() {
                   <input className="bg-gray-700 p-2 rounded text-white border border-gray-600 focus:border-blue-500 outline-none" placeholder="例: 3年B組" value={department} onChange={e => setDepartment(e.target.value)} />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs text-gray-400 mb-1">画像URL <span className="text-gray-500 text-[10px] border border-gray-600 px-1 rounded ml-1">任意</span></label>
-                  <input className="bg-gray-700 p-2 rounded text-white border border-gray-600 focus:border-blue-500 outline-none" placeholder="https://..." value={imageUrl} onChange={e => setImageUrl(convertGoogleDriveLink(e.target.value))} />
-                </div>
-              </div>
+　　　　　　　　　　  <label className="text-xs text-gray-400 mb-1">アイコン画像 (1:1推奨) <span className="text-gray-500 text-[10px] border border-gray-600 px-1 rounded ml-1">任意</span></label>
+　　　　　　　　　  <input className="w-full bg-gray-700 p-2 rounded text-white border border-gray-600 focus:border-blue-500 outline-none" placeholder="https://..." value={iconUrl} onChange={e => setIconUrl(convertGoogleDriveLink(e.target.value))} />
+　　　　　　　　　</div>
+　　　　　　　　　　<div className="flex flex-col">
+　　　　　　　　　  <label className="text-xs text-gray-400 mb-1">ヘッダー画像 (16:9推奨) <span className="text-gray-500 text-[10px] border border-gray-600 px-1 rounded ml-1">任意</span></label>
+　　　　　　　　　  <input className="w-full bg-gray-700 p-2 rounded text-white border border-gray-600 focus:border-blue-500 outline-none" placeholder="https://..." value={headerUrl} onChange={e => setHeaderUrl(convertGoogleDriveLink(e.target.value))} />
+　　　　　　　　　</div>
 
               {/* 説明文 */}
               <div className="mb-4">
@@ -859,8 +864,8 @@ export default function SuperAdminPage() {
                   className={`group p-4 rounded-xl border text-left flex items-start gap-4 transition hover:bg-gray-800 relative overflow-hidden
                     ${hasUser ? 'bg-pink-900/40 border-pink-500' : 'bg-gray-800 border-gray-600'}`}
                 >
-                  {shop.imageUrl
-                    ? <img src={shop.imageUrl} alt="" className="w-16 h-16 rounded object-cover bg-gray-700 flex-shrink-0" />
+                 {(shop.iconUrl || shop.imageUrl)
+  ? <img src={shop.iconUrl || shop.imageUrl} alt="" className="w-16 h-16 rounded object-cover bg-gray-700 flex-shrink-0" />
                     : <div className="w-16 h-16 rounded bg-gray-700 flex items-center justify-center text-2xl flex-shrink-0">🎪</div>}
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -893,10 +898,11 @@ export default function SuperAdminPage() {
             <div className="bg-gray-800 rounded-xl border border-gray-600 overflow-hidden">
               {/* タイトルバー */}
               <div className="bg-gray-700 p-4 flex justify-between items-start relative overflow-hidden">
-                {targetShop.imageUrl && (
-                  <div className="absolute inset-0 z-0 opacity-20">
-                    <img src={targetShop.imageUrl} className="w-full h-full object-cover" alt="" />
-                  </div>
+                {(targetShop.headerUrl || targetShop.imageUrl) && (
+  　　　　　　　　　　<div className="absolute inset-0 z-0 opacity-20">
+    　　　　　　　　<img src={targetShop.headerUrl || targetShop.imageUrl} className="w-full h-full object-cover" alt="" />
+  　　　　　　　　　　</div>
+　　　　　　　　　　　)}
                 )}
                 <div className="relative z-10">
                   <div className="flex items-center gap-2 mb-1">
