@@ -440,13 +440,6 @@ const getAvailableTimeSlots = (shop: any): string[] => {
  return (shop.slots[time] ?? 0) < shop.capacity;
  });
  
-
-<div className="bg-gray-800 border-b border-gray-700 px-4 py-2 flex justify-between items-center sticky top-0 z-50 shadow-md">
- <div className="text-xs text-gray-400">Logged in as:</div>
- <div className="font-mono font-bold text-yellow-400 text-lg tracking-wider">
- {myUserId || "---"}
- </div>
- </div>
  
 <div className="max-w-4xl mx-auto p-4 pb-32">
  <div className="mb-6 border-b border-gray-700 pb-4">
