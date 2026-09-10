@@ -439,11 +439,8 @@ const getAvailableTimeSlots = (shop: any): string[] => {
  return Object.keys(shop.slots).sort().filter(time => {
  return (shop.slots[time] ?? 0) < shop.capacity;
  });
- };
  
-return (
- <div className="min-h-screen bg-gray-900 text-white font-sans">
- 
+
 <div className="bg-gray-800 border-b border-gray-700 px-4 py-2 flex justify-between items-center sticky top-0 z-50 shadow-md">
  <div className="text-xs text-gray-400">Logged in as:</div>
  <div className="font-mono font-bold text-yellow-400 text-lg tracking-wider">
