@@ -23,7 +23,7 @@ const convertGoogleDriveLink = (url: string) => {
 // ゲストIDを採番する関数
 const generateGuestId = (shop: any): string => {
   const allIds: string[] = [];
-  
+ 
   if (shop.reservations) {
     shop.reservations.forEach((r: any) => {
       if (r.userId && r.userId.startsWith("G")) allIds.push(r.userId);
@@ -47,38 +47,38 @@ const generateGuestId = (shop: any): string => {
 
 // ハッシュタグを抽出する関数
 const extractTags = (text: string): string[] => {
-    if (!text) return [];
-    // 全角＃を半角#に、全角スペースを半角スペースに変換
-    const normalizedText = text.replace(/＃/g, '#').replace(/ /g, ' ');
-    // #から始まり、スペースまたは各種記号で区切られるまでを抽出
-    const regex = /#([^\s!"#$%&'()*+,\-./:;<=>?@[\\\]^`{|}~]+)/g;
-    let matches;
-    const tags: string[] = [];
-    while ((matches = regex.exec(normalizedText)) !== null) {
-        if (matches[1]) tags.push(matches[1]);
-    }
-    // 重複を削除して返す
-    return Array.from(new Set(tags));
+  if (!text) return [];
+  // 全角＃を半角#に、全角スペースを半角スペースに変換
+  const normalizedText = text.replace(/＃/g, '#').replace(/ /g, ' ');
+  // #から始まり、スペースまたは各種記号で区切られるまでを抽出
+  const regex = /#([^\s!"#$%&'()*+,\-./:;<=>?@[\\\]^`{|}~]+)/g;
+  let matches;
+  const tags: string[] = [];
+  while ((matches = regex.exec(normalizedText)) !== null) {
+    if (matches[1]) tags.push(matches[1]);
+  }
+  // 重複を削除して返す
+  return Array.from(new Set(tags));
 };
  
 export default function AdminPage() {
   const [attractions, setAttractions] = useState<any[]>([]);
-  
+ 
   const [myUserId, setMyUserId] = useState("");
   const [isGlobalBanned, setIsGlobalBanned] = useState(false);
  
   const [expandedShopId, setExpandedShopId] = useState<string | null>(null); 
   const [isEditing, setIsEditing] = useState(false); 
- 
+
   // 編集用フォームステート
   const [manualId, setManualId] = useState("");
   const [newName, setNewName] = useState("");
   const [department, setDepartment] = useState(""); 
-  const [imageUrl, setImageUrl] = useState("");     
+  const [imageUrl, setImageUrl] = useState(""); 
   const [description, setDescription] = useState(""); 
   const [rawTags, setRawTags] = useState(""); // 追加: ハッシュタグ入力用
   const [password, setPassword] = useState("");
-  
+ 
   const [groupLimit, setGroupLimit] = useState(4);
   const [openTime, setOpenTime] = useState("10:00");
   const [closeTime, setCloseTime] = useState("15:00");
@@ -97,19 +97,19 @@ export default function AdminPage() {
  
   useEffect(() => {
     signInAnonymously(auth).catch((e) => console.error(e));
-    
+ 
     let stored = localStorage.getItem("bunkasai_user_id");
-    
+ 
     if (!stored) {
-        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        let result = "";
-        for (let i = 0; i < 6; i++) {
-            result += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        stored = result;
-        localStorage.setItem("bunkasai_user_id", stored);
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      let result = "";
+      for (let i = 0; i < 6; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      stored = result;
+      localStorage.setItem("bunkasai_user_id", stored);
     }
-    
+ 
     setMyUserId(stored);
  
     const unsubAttractions = onSnapshot(collection(db, "attractions"), (snapshot) => {
@@ -117,80 +117,80 @@ export default function AdminPage() {
     });
  
     const unsubUser = onSnapshot(doc(db, "users", stored), (docSnap) => {
-        if (docSnap.exists()) {
-            const userData = docSnap.data();
-            setIsGlobalBanned(!!userData.isBanned);
-        } else {
-            setIsGlobalBanned(false);
-        }
+      if (docSnap.exists()) {
+        const userData = docSnap.data();
+        setIsGlobalBanned(!!userData.isBanned);
+      } else {
+        setIsGlobalBanned(false);
+      }
     });
  
     return () => {
-        unsubAttractions();
-        unsubUser();
+      unsubAttractions();
+      unsubUser();
     };
   }, []);
  
   if (isGlobalBanned) {
-      return (
-          <div className="min-h-screen bg-black text-red-600 font-sans flex flex-col items-center justify-center p-6 text-center animate-fade-in">
-              <div className="text-6xl mb-4">🚫</div>
-              <h1 className="text-3xl font-bold mb-2">ACCESS DENIED</h1>
-              <p className="text-white text-lg mb-6">
-                  このアカウントは管理者により凍結されました。<br/>
-                  すべての操作が無効化されています。
-              </p>
-              <div className="bg-gray-900 border border-gray-700 p-4 rounded text-sm text-gray-400 font-mono">
-                  User ID: <span className="text-yellow-500">{myUserId}</span>
-              </div>
-          </div>
-      );
+    return (
+      <div className="min-h-screen bg-black text-red-600 font-sans flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+        <div className="text-6xl mb-4">🚫</div>
+        <h1 className="text-3xl font-bold mb-2">ACCESS DENIED</h1>
+        <p className="text-white text-lg mb-6">
+          このアカウントは管理者により凍結されました。<br/>
+          すべての操作が無効化されています。
+        </p>
+        <div className="bg-gray-900 border border-gray-700 p-4 rounded text-sm text-gray-400 font-mono">
+          User ID: <span className="text-yellow-500">{myUserId}</span>
+        </div>
+      </div>
+    );
   }
  
   const isUserBlacklisted = (shop: any) => {
-      return shop?.adminBannedUsers?.includes(myUserId);
+    return shop?.adminBannedUsers?.includes(myUserId);
   };
  
   const isUserNotWhitelisted = (shop: any) => {
-      if (shop.isRestricted) {
-          return !shop.allowedUsers?.includes(myUserId);
-      }
-      return false;
+    if (shop.isRestricted) {
+      return !shop.allowedUsers?.includes(myUserId);
+    }
+    return false;
   };
  
   const isAdminRestrictedAndNotAllowed = (shop: any) => {
-      if (shop.isAdminRestricted) {
-          return !shop.adminAllowedUsers?.includes(myUserId);
-      }
-      return false;
+    if (shop.isAdminRestricted) {
+      return !shop.adminAllowedUsers?.includes(myUserId);
+    }
+    return false;
   };
  
   const handleExpandShop = (shopId: string) => {
-      const shop = attractions.find(s => s.id === shopId);
-      if (!shop) return;
+    const shop = attractions.find(s => s.id === shopId);
+    if (!shop) return;
  
-      if (isUserBlacklisted(shop)) {
-          alert(`⛔ アクセス拒否\nあなたのIDは、この会場のブラックリストに含まれているため操作できません。`);
-          return;
-      }
+    if (isUserBlacklisted(shop)) {
+      alert(`⛔ アクセス拒否\nあなたのIDは、この会場のブラックリストに含まれているため操作できません。`);
+      return;
+    }
  
-      if (isUserNotWhitelisted(shop)) {
-          alert(`🔒 アクセス制限\nこの会場は「ホワイトリスト（許可制）」です。\nあなたのIDは許可リストに入っていません。`);
-          return;
-      }
+    if (isUserNotWhitelisted(shop)) {
+      alert(`🔒 アクセス制限\nこの会場は「ホワイトリスト（許可制）」です。\nあなたのIDは許可リストに入っていません。`);
+      return;
+    }
  
-      if (isAdminRestrictedAndNotAllowed(shop)) {
-          alert(`🔒 管理者制限\nこの会場は「指名スタッフ限定モード」です。\nアクセス権限がありません。`);
-          return;
-      }
+    if (isAdminRestrictedAndNotAllowed(shop)) {
+      alert(`🔒 管理者制限\nこの会場は「指名スタッフ限定モード」です。\nアクセス権限がありません。`);
+      return;
+    }
  
-      const inputPass = prompt(`「${shop.name}」の管理用パスワードを入力してください`);
-      if (inputPass !== shop.password) {
-          alert("パスワードが違います");
-          return;
-      }
+    const inputPass = prompt(`「${shop.name}」の管理用パスワードを入力してください`);
+    if (inputPass !== shop.password) {
+      alert("パスワードが違います");
+      return;
+    }
  
-      setExpandedShopId(shopId);
+    setExpandedShopId(shopId);
   };
  
   const resetForm = () => {
@@ -221,7 +221,7 @@ export default function AdminPage() {
     setIsPaused(shop.isPaused || false);
     setIsQueueMode(shop.isQueueMode || false); 
     setReleaseBeforeTime(shop.releaseBeforeTime || ""); 
-    
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
  
@@ -229,9 +229,9 @@ export default function AdminPage() {
     if (!isEditing) return alert("新規会場の作成は無効化されています。");
  
     const currentShop = attractions.find(s => s.id === manualId);
-    
+ 
     if (currentShop && (isUserBlacklisted(currentShop) || isUserNotWhitelisted(currentShop))) {
-        return alert("権限がないため保存できません。");
+      return alert("権限がないため保存できません。");
     }
  
     if (!manualId || !newName || !password) return alert("必須項目を入力してください");
@@ -241,26 +241,26 @@ export default function AdminPage() {
     let shouldResetSlots = false;
  
     if (!isQueueMode) {
-        if (currentShop && currentShop.openTime === openTime && currentShop.closeTime === closeTime && currentShop.duration === duration) {
-            slots = currentShop.slots;
-            shouldResetSlots = false;
-        } else {
-            if(!confirm("時間を変更すると、現在の予約枠がリセットされます。よろしいですか？")) return;
-            shouldResetSlots = true;
-        }
+      if (currentShop && currentShop.openTime === openTime && currentShop.closeTime === closeTime && currentShop.duration === duration) {
+        slots = currentShop.slots;
+        shouldResetSlots = false;
+      } else {
+        if(!confirm("時間を変更すると、現在の予約枠がリセットされます。よろしいですか？")) return;
+        shouldResetSlots = true;
+      }
  
-        if (shouldResetSlots) {
-            let current = new Date(`2000/01/01 ${openTime}`);
-            const end = new Date(`2000/01/01 ${closeTime}`);
-            slots = {};
-            while (current < end) {
-                const timeStr = current.toTimeString().substring(0, 5);
-                slots = { ...slots, [timeStr]: 0 };
-                current.setMinutes(current.getMinutes() + duration);
-            }
+      if (shouldResetSlots) {
+        let current = new Date(`2000/01/01 ${openTime}`);
+        const end = new Date(`2000/01/01 ${closeTime}`);
+        slots = {};
+        while (current < end) {
+          const timeStr = current.toTimeString().substring(0, 5);
+          slots = { ...slots, [timeStr]: 0 };
+          current.setMinutes(current.getMinutes() + duration);
         }
+      }
     } else {
-        slots = currentShop?.slots || {}; 
+      slots = currentShop?.slots || {}; 
     }
  
     // ハッシュタグの抽出
@@ -280,11 +280,11 @@ export default function AdminPage() {
     };
 
     if (shouldResetSlots && !isQueueMode) {
-        data.reservations = [];
+      data.reservations = [];
     }
  
     await updateDoc(doc(db, "attractions", manualId), data);
-    
+ 
     alert("更新しました");
     setExpandedShopId(manualId);
     resetForm(); 
@@ -300,730 +300,728 @@ export default function AdminPage() {
   };
  
   const toggleReservationStatus = async (shop: any, res: any, newStatus: "reserved" | "used") => {
-      if (isUserBlacklisted(shop) || isUserNotWhitelisted(shop)) return;
-      if(!confirm(newStatus === "used" ? "入場済みにしますか？" : "入場を取り消して予約状態に戻しますか？")) return;
+    if (isUserBlacklisted(shop) || isUserNotWhitelisted(shop)) return;
+    if(!confirm(newStatus === "used" ? "入場済みにしますか？" : "入場を取り消して予約状態に戻しますか？")) return;
  
-      const otherRes = shop.reservations.filter((r: any) => r.timestamp !== res.timestamp);
-      const updatedRes = { ...res, status: newStatus };
+    const otherRes = shop.reservations.filter((r: any) => r.timestamp !== res.timestamp);
+    const updatedRes = { ...res, status: newStatus };
  
-      await updateDoc(doc(db, "attractions", shop.id), {
-          reservations: [...otherRes, updatedRes]
-      });
+    await updateDoc(doc(db, "attractions", shop.id), {
+      reservations: [...otherRes, updatedRes]
+    });
   };
  
   const cancelReservation = async (shop: any, res: any) => {
-      if (isUserBlacklisted(shop) || isUserNotWhitelisted(shop)) return;
-      if(!confirm(`User ID: ${res.userId}\nこの予約を削除しますか？`)) return;
+    if (isUserBlacklisted(shop) || isUserNotWhitelisted(shop)) return;
+    if(!confirm(`User ID: ${res.userId}\nこの予約を削除しますか？`)) return;
  
-      const otherRes = shop.reservations.filter((r: any) => r.timestamp !== res.timestamp);
-      const updatedSlots = { ...shop.slots, [res.time]: Math.max(0, shop.slots[res.time] - 1) };
+    const otherRes = shop.reservations.filter((r: any) => r.timestamp !== res.timestamp);
+    const updatedSlots = { ...shop.slots, [res.time]: Math.max(0, shop.slots[res.time] - 1) };
  
-      await updateDoc(doc(db, "attractions", shop.id), {
-          reservations: otherRes,
-          slots: updatedSlots
-      });
+    await updateDoc(doc(db, "attractions", shop.id), {
+      reservations: otherRes,
+      slots: updatedSlots
+    });
   };
  
   const handleQueueAction = async (shop: any, ticket: any, action: "call" | "enter" | "cancel") => {
-      if (isUserBlacklisted(shop) || isUserNotWhitelisted(shop)) return;
+    if (isUserBlacklisted(shop) || isUserNotWhitelisted(shop)) return;
  
-      let confirmMsg = "";
-      if (action === "call") confirmMsg = `Ticket No.${ticket.ticketId}\n呼び出しを行いますか？（ユーザー画面が赤くなります）`;
-      if (action === "enter") confirmMsg = `Ticket No.${ticket.ticketId}\n入場済みにしますか？（列から削除されます）`;
-      if (action === "cancel") confirmMsg = `Ticket No.${ticket.ticketId}\n強制取り消ししますか？（列から削除されます）`;
+    let confirmMsg = "";
+    if (action === "call") confirmMsg = `Ticket No.${ticket.ticketId}\n呼び出しを行いますか？（ユーザー画面が赤くなります）`;
+    if (action === "enter") confirmMsg = `Ticket No.${ticket.ticketId}\n入場済みにしますか？（列から削除されます）`;
+    if (action === "cancel") confirmMsg = `Ticket No.${ticket.ticketId}\n強制取り消ししますか？（列から削除されます）`;
  
-      if (!confirm(confirmMsg)) return;
+    if (!confirm(confirmMsg)) return;
  
-      const currentQueue = shop.queue || [];
-      let updatedQueue = [];
+    const currentQueue = shop.queue || [];
+    let updatedQueue = [];
  
-      if (action === "call") {
-          updatedQueue = currentQueue.map((t: any) => 
-              t.ticketId === ticket.ticketId ? { ...t, status: "ready" } : t
-          );
-      } else {
-          updatedQueue = currentQueue.filter((t: any) => t.ticketId !== ticket.ticketId);
-      }
+    if (action === "call") {
+      updatedQueue = currentQueue.map((t: any) => 
+        t.ticketId === ticket.ticketId ? { ...t, status: "ready" } : t
+      );
+    } else {
+      updatedQueue = currentQueue.filter((t: any) => t.ticketId !== ticket.ticketId);
+    }
  
-      await updateDoc(doc(db, "attractions", shop.id), {
-          queue: updatedQueue
-      });
+    await updateDoc(doc(db, "attractions", shop.id), {
+      queue: updatedQueue
+    });
   };
  
   const openGuestModal = (shop: any) => {
-      if (isUserBlacklisted(shop) || isUserNotWhitelisted(shop) || isAdminRestrictedAndNotAllowed(shop)) {
-          alert("権限がないため操作できません。");
-          return;
-      }
-      setGuestModalShopId(shop.id);
-      setGuestSelectedTime("");
-      setGuestCount(1);
+    if (isUserBlacklisted(shop) || isUserNotWhitelisted(shop) || isAdminRestrictedAndNotAllowed(shop)) {
+      alert("権限がないため操作できません。");
+      return;
+    }
+    setGuestModalShopId(shop.id);
+    setGuestSelectedTime("");
+    setGuestCount(1);
   };
  
   const handleAddGuestSlot = async () => {
-      if (!guestModalShopId) return;
-      const shop = attractions.find(s => s.id === guestModalShopId);
-      if (!shop) return;
+    if (!guestModalShopId) return;
+    const shop = attractions.find(s => s.id === guestModalShopId);
+    if (!shop) return;
  
-      const guestId = generateGuestId(shop);
-      const timestamp = Date.now();
+    const guestId = generateGuestId(shop);
+    const timestamp = Date.now();
  
-      if (shop.isQueueMode) {
-          const currentQueue = shop.queue || [];
-          const ticketId = guestId; 
-          const newTicket = {
-              ticketId,
-              userId: guestId,
-              count: guestCount,
-              status: "waiting",
-              timestamp,
-              isGuest: true,
-          };
-          await updateDoc(doc(db, "attractions", shop.id), {
-              queue: [...currentQueue, newTicket],
-          });
-          alert(`ゲスト枠を追加しました\nGuest ID: ${guestId}`);
-      } else {
-          if (!guestSelectedTime) {
-              alert("時間を選択してください");
-              return;
-          }
-          const slotCount = shop.slots?.[guestSelectedTime] ?? 0;
-          if (slotCount >= shop.capacity) {
-              alert("選択した時間枠はすでに満員です");
-              return;
-          }
-          const currentReservations = shop.reservations || [];
-          const newReservation = {
-              userId: guestId,
-              time: guestSelectedTime,
-              count: guestCount,
-              status: "reserved",
-              timestamp,
-              isGuest: true,
-          };
-          const updatedSlots = { ...shop.slots, [guestSelectedTime]: slotCount + 1 };
-          await updateDoc(doc(db, "attractions", shop.id), {
-              reservations: [...currentReservations, newReservation],
-              slots: updatedSlots,
-          });
-          alert(`ゲスト枠を追加しました\nGuest ID: ${guestId}\n時間: ${guestSelectedTime}`);
+    if (shop.isQueueMode) {
+      const currentQueue = shop.queue || [];
+      const ticketId = guestId; 
+      const newTicket = {
+        ticketId,
+        userId: guestId,
+        count: guestCount,
+        status: "waiting",
+        timestamp,
+        isGuest: true,
+      };
+      await updateDoc(doc(db, "attractions", shop.id), {
+        queue: [...currentQueue, newTicket],
+      });
+      alert(`ゲスト枠を追加しました\nGuest ID: ${guestId}`);
+    } else {
+      if (!guestSelectedTime) {
+        alert("時間を選択してください");
+        return;
       }
+      const slotCount = shop.slots?.[guestSelectedTime] ?? 0;
+      if (slotCount >= shop.capacity) {
+        alert("選択した時間枠はすでに満員です");
+        return;
+      }
+      const currentReservations = shop.reservations || [];
+      const newReservation = {
+        userId: guestId,
+        time: guestSelectedTime,
+        count: guestCount,
+        status: "reserved",
+        timestamp,
+        isGuest: true,
+      };
+      const updatedSlots = { ...shop.slots, [guestSelectedTime]: slotCount + 1 };
+      await updateDoc(doc(db, "attractions", shop.id), {
+        reservations: [...currentReservations, newReservation],
+        slots: updatedSlots,
+      });
+      alert(`ゲスト枠を追加しました\nGuest ID: ${guestId}\n時間: ${guestSelectedTime}`);
+    }
  
-      setGuestModalShopId(null);
+    setGuestModalShopId(null);
   };
  
   const targetShop = attractions.find(s => s.id === expandedShopId);
   const guestModalShop = attractions.find(s => s.id === guestModalShopId);
  
   const getReservationsByTime = (shop: any) => {
-      const grouped: any = {};
-      Object.keys(shop.slots || {}).sort().forEach(time => {
-          grouped[time] = [];
+    const grouped: any = {};
+    Object.keys(shop.slots || {}).sort().forEach(time => {
+      grouped[time] = [];
+    });
+    if(shop.reservations) {
+      shop.reservations.forEach((res: any) => {
+        if(grouped[res.time]) {
+          grouped[res.time].push(res);
+        }
       });
-      if(shop.reservations) {
-          shop.reservations.forEach((res: any) => {
-              if(grouped[res.time]) {
-                  grouped[res.time].push(res);
-              }
-          });
-      }
-      return grouped;
+    }
+    return grouped;
   };
  
   const getAvailableTimeSlots = (shop: any): string[] => {
-      if (!shop || !shop.slots) return [];
-      return Object.keys(shop.slots).sort().filter(time => {
-          return (shop.slots[time] ?? 0) < shop.capacity;
-      });
+    if (!shop || !shop.slots) return [];
+    return Object.keys(shop.slots).sort().filter(time => {
+      return (shop.slots[time] ?? 0) < shop.capacity;
+    });
   };
  
   return (
     <div className="min-h-screen bg-gray-900 text-white font-sans">
-      
+ 
       <div className="bg-gray-800 border-b border-gray-700 px-4 py-2 flex justify-between items-center sticky top-0 z-50 shadow-md">
-          <div className="text-xs text-gray-400">Logged in as:</div>
-          <div className="font-mono font-bold text-yellow-400 text-lg tracking-wider">
-              {myUserId || "---"}
-          </div>
+        <div className="text-xs text-gray-400">Logged in as:</div>
+        <div className="font-mono font-bold text-yellow-400 text-lg tracking-wider">
+          {myUserId || "---"}
+        </div>
       </div>
  
       <div className="max-w-4xl mx-auto p-4 pb-32">
         <div className="mb-6 border-b border-gray-700 pb-4">
-            <h1 className="text-2xl font-bold text-white mb-4">予約管理</h1>
-            
-            {isEditing ? (
-                <div className="bg-gray-800 rounded-lg p-4 border border-blue-500 mb-4 animate-fade-in shadow-lg shadow-blue-900/20">
-                    <h3 className="text-sm font-bold mb-4 text-blue-300 flex items-center gap-2 border-b border-gray-700 pb-2">
-                        <span>✏️ 設定編集モード</span>
-                        <span className="text-gray-500 text-xs font-normal ml-auto">ID: {manualId}</span>
-                    </h3>
-                    
-                    <div className="grid gap-4 md:grid-cols-2 mb-4 bg-gray-900/50 p-3 rounded border border-gray-700">
-                        <div className="flex flex-col">
-                            <label className="text-xs text-gray-500 mb-1">会場ID <span className="text-[10px] bg-gray-700 px-1 rounded text-gray-400">変更不可</span></label>
-                            <input 
-                                disabled 
-                                className="bg-gray-800 p-2 rounded text-gray-400 cursor-not-allowed border border-gray-700 font-mono" 
-                                value={manualId} 
-                            />
-                        </div>
-                        <div className="flex flex-col">
-                            <label className="text-xs text-gray-500 mb-1">管理者Pass <span className="text-[10px] bg-gray-700 px-1 rounded text-gray-400">変更不可</span></label>
-                            <input 
-                                disabled 
-                                className="bg-gray-800 p-2 rounded text-gray-400 cursor-not-allowed border border-gray-700 font-mono" 
-                                value={password} 
-                            />
-                        </div>
-                    </div>
+          <h1 className="text-2xl font-bold text-white mb-4">予約管理</h1>
  
-                    <div className="grid gap-4 md:grid-cols-2 mb-4">
-                        <div className="flex flex-col">
-                            <label className="text-xs text-gray-400 mb-1">会場名 <span className="text-red-500 text-[10px] border border-red-500/50 px-1 rounded ml-1">必須</span></label>
-                            <input 
-                                className="bg-gray-700 p-2 rounded text-white border border-gray-600 focus:border-blue-500 outline-none" 
-                                placeholder="会場名" 
-                                value={newName} 
-                                onChange={e => setNewName(e.target.value)} 
-                            />
-                        </div>
-                        <div className="flex flex-col">
-                            <label className="text-xs text-gray-500 mb-1">団体・クラス名 <span className="text-[10px] bg-gray-700 px-1 rounded text-gray-400">変更不可</span></label>
-                            <input 
-                                disabled 
-                                className="bg-gray-800 p-2 rounded text-gray-400 cursor-not-allowed border border-gray-700" 
-                                value={department} 
-                            />
-                        </div>
-                    </div>
+          {isEditing ? (
+            <div className="bg-gray-800 rounded-lg p-4 border border-blue-500 mb-4 animate-fade-in shadow-lg shadow-blue-900/20">
+              <h3 className="text-sm font-bold mb-4 text-blue-300 flex items-center gap-2 border-b border-gray-700 pb-2">
+                <span>✏️ 設定編集モード</span>
+                <span className="text-gray-500 text-xs font-normal ml-auto">ID: {manualId}</span>
+              </h3>
  
-                    <div className="mb-4">
-                        <div className="flex flex-col">
-                            <label className="text-xs text-gray-400 mb-1">画像URL (Google Drive等) <span className="text-gray-500 text-[10px] border border-gray-600 px-1 rounded ml-1">任意</span></label>
-                            <input 
-                                className="bg-gray-700 p-2 rounded text-white border border-gray-600 focus:border-blue-500 outline-none w-full" 
-                                placeholder="https://..." 
-                                value={imageUrl} 
-                                onChange={e => setImageUrl(convertGoogleDriveLink(e.target.value))} 
-                            />
-                        </div>
-                    </div>
- 
-                    <div className="mb-4">
-                      <label className="text-xs text-gray-400 mb-1 block">会場説明文 <span className="text-gray-500 text-[10px] border border-gray-600 px-1 rounded ml-1">任意</span> <span className="text-[10px] text-gray-500 ml-1">※最大500文字</span></label>
-                      <textarea 
-                          className="w-full bg-gray-700 p-2 rounded text-white h-24 text-sm border border-gray-600 focus:border-blue-500 outline-none resize-none"
-                          placeholder="会場のアピールポイントや注意事項を入力してください。"
-                          maxLength={500}
-                          value={description}
-                          onChange={e => setDescription(e.target.value)}
-                      />
-                      <div className="text-right text-xs text-gray-500">{description.length}/500</div>
-                    </div>
-
-                    {/* ハッシュタグ設定エリア (追加) */}
-                    <div className="mb-4 bg-gray-900/30 p-3 rounded border border-gray-700">
-                        <label className="text-xs text-gray-400 mb-2 block font-bold">
-                            ハッシュタグ 
-                            <span className="text-gray-500 text-[10px] border border-gray-600 px-1 rounded ml-1 font-normal">任意</span> 
-                            <span className="text-[10px] text-gray-500 ml-1 font-normal">※最大100文字</span>
-                        </label>
-                        
-                        {/* プレビュー表示エリア */}
-                        <div className="flex flex-wrap gap-2 mb-3 min-h-[24px]">
-                            {extractTags(rawTags).map((tag, idx) => (
-                                <span key={idx} className="bg-blue-600/30 text-blue-300 border border-blue-500/50 px-3 py-1 rounded-full text-xs font-bold shadow-sm flex items-center">
-                                    #{tag}
-                                </span>
-                            ))}
-                            {extractTags(rawTags).length === 0 && (
-                                <span className="text-xs text-gray-500 italic flex items-center">プレビュー：認識されたタグがここに表示されます</span>
-                            )}
-                        </div>
-                        
-                        <input 
-                            type="text"
-                            className="w-full bg-gray-700 p-2 rounded text-white text-sm border border-gray-600 focus:border-blue-500 outline-none"
-                            placeholder="例: #ホラー (スペースで区切って「#」を付けて。複数OK 全角OK)"
-                            maxLength={100}
-                            value={rawTags}
-                            onChange={e => setRawTags(e.target.value)}
-                        />
-                    </div>
- 
-                    <div className="bg-gray-750 p-3 rounded border border-gray-600 mb-4 bg-gray-900/30">
-                         <h4 className="text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">Operation Mode</h4>
-                         <div className="flex flex-wrap gap-4 items-center">
-                            <div className="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded border border-gray-700">
-                                <span className={`text-xs font-bold ${!isQueueMode ? "text-blue-400" : "text-gray-500"}`}>🕒 時間予約制</span>
-                                <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-                                    <input type="checkbox" name="toggle" id="mode-toggle" 
-                                        checked={isQueueMode} 
-                                        onChange={(e) => setIsQueueMode(e.target.checked)}
-                                        className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out"
-                                        style={{ transform: isQueueMode ? 'translateX(100%)' : 'translateX(0)' }}
-                                    />
-                                    <label htmlFor="mode-toggle" className={`toggle-label block overflow-hidden h-5 rounded-full cursor-pointer ${isQueueMode ? "bg-green-600" : "bg-gray-600"}`}></label>
-                                </div>
-                                <span className={`text-xs font-bold ${isQueueMode ? "text-green-400" : "text-gray-500"}`}>🔢 順番待ち制</span>
-                            </div>
-                            
-                            <div className="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded border border-gray-700">
-                                <input type="checkbox" checked={isPaused} onChange={e => setIsPaused(e.target.checked)} className="accent-red-500 w-4 h-4 cursor-pointer" />
-                                <span className={`text-xs font-bold ${isPaused ? "text-red-400" : "text-gray-400"}`}>⛔ 受付を緊急停止</span>
-                            </div>
-                        </div>
-                    </div>
- 
-                    {!isQueueMode && (
-                        <div className="bg-gray-750 p-3 rounded border border-gray-600 mb-4 bg-gray-900/30">
-                            <h4 className="text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">Time Settings (予約制のみ)</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-3">
-                                <div className="flex flex-col">
-                                    <label className="text-[10px] text-gray-400 mb-1">開始時間 <span className="text-red-500">*</span></label>
-                                    <input type="time" value={openTime} onChange={e => setOpenTime(e.target.value)} className="bg-gray-700 p-2 rounded text-sm outline-none border border-gray-600 focus:border-blue-500"/>
-                                </div>
-                                <div className="flex flex-col">
-                                    <label className="text-[10px] text-gray-400 mb-1">終了時間 <span className="text-red-500">*</span></label>
-                                    <input type="time" value={closeTime} onChange={e => setCloseTime(e.target.value)} className="bg-gray-700 p-2 rounded text-sm outline-none border border-gray-600 focus:border-blue-500"/>
-                                </div>
-                                <div className="flex flex-col">
-                                    <label className="text-[10px] text-gray-400 mb-1">1枠の時間(分) <span className="text-red-500">*</span></label>
-                                    <input type="number" value={duration} onChange={e => setDuration(Number(e.target.value))} className="bg-gray-700 p-2 rounded text-sm outline-none border border-gray-600 focus:border-blue-500" placeholder="分"/>
-                                </div>
-                                <div className="flex flex-col">
-                                    <label className="text-[10px] text-gray-400 mb-1">枠ごとの定員(組) <span className="text-red-500">*</span></label>
-                                    <input type="number" value={capacity} onChange={e => setCapacity(Number(e.target.value))} className="bg-gray-700 p-2 rounded text-sm outline-none border border-gray-600 focus:border-blue-500" placeholder="定員"/>
-                                </div>
-                                <div className="flex flex-col">
-                                    <label className="text-[10px] text-gray-400 mb-1">事前解放(時間前) <span className="text-[8px] bg-gray-700 px-1 rounded text-gray-400">任意</span></label>
-                                    <input type="time" value={releaseBeforeTime} onChange={e => setReleaseBeforeTime(e.target.value)} className="bg-gray-700 p-2 rounded text-sm outline-none border border-gray-600 focus:border-blue-500"/>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                    
-                    <div className="bg-gray-750 p-3 rounded border border-gray-600 mb-4 bg-gray-900/30 flex items-center gap-4">
-                         <div className="flex flex-col">
-                            <label className="text-[10px] text-gray-400 mb-1">1組の最大人数</label>
-                            <input type="number" value={groupLimit} onChange={e => setGroupLimit(Number(e.target.value))} className="w-20 bg-gray-700 p-2 rounded text-sm outline-none text-center border border-gray-600 focus:border-blue-500" />
-                         </div>
-                    </div>
- 
-                    <div className="flex gap-2">
-                        <button onClick={handleSave} className="flex-1 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 py-3 rounded font-bold transition shadow-lg shadow-blue-900/40">変更を保存</button>
-                        <button onClick={resetForm} className="bg-gray-700 hover:bg-gray-600 px-6 rounded text-sm transition border border-gray-600">キャンセル</button>
-                    </div>
+              <div className="grid gap-4 md:grid-cols-2 mb-4 bg-gray-900/50 p-3 rounded border border-gray-700">
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-500 mb-1">会場ID <span className="text-[10px] bg-gray-700 px-1 rounded text-gray-400">変更不可</span></label>
+                  <input 
+                    disabled 
+                    className="bg-gray-800 p-2 rounded text-gray-400 cursor-not-allowed border border-gray-700 font-mono" 
+                    value={manualId} 
+                  />
                 </div>
-            ) : (
-                <div className="bg-gray-800/50 rounded p-3 mb-4 border border-gray-700 text-center text-xs text-gray-500">
-                    ※設定を変更するには、下のリストから会場を選び「設定編集」ボタンを押してください。
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-500 mb-1">管理者Pass <span className="text-[10px] bg-gray-700 px-1 rounded text-gray-400">変更不可</span></label>
+                  <input 
+                    disabled 
+                    className="bg-gray-800 p-2 rounded text-gray-400 cursor-not-allowed border border-gray-700 font-mono" 
+                    value={password} 
+                  />
                 </div>
-            )}
+              </div>
  
-            <div className="flex gap-2 items-center bg-gray-800 p-2 rounded border border-gray-600">
-                <span className="text-xl">🔍</span>
-                <input 
-                    className="flex-1 bg-transparent text-white outline-none" 
-                    placeholder="ユーザーIDまたはチケットID(6桁)を入力" 
-                    value={searchUserId} 
-                    onChange={e => setSearchUserId(e.target.value)} 
+              <div className="grid gap-4 md:grid-cols-2 mb-4">
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-400 mb-1">会場名 <span className="text-red-500 text-[10px] border border-red-500/50 px-1 rounded ml-1">必須</span></label>
+                  <input 
+                    className="bg-gray-700 p-2 rounded text-white border border-gray-600 focus:border-blue-500 outline-none" 
+                    placeholder="会場名" 
+                    value={newName} 
+                    onChange={e => setNewName(e.target.value)} 
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-500 mb-1">団体・クラス名 <span className="text-[10px] bg-gray-700 px-1 rounded text-gray-400">変更不可</span></label>
+                  <input 
+                    disabled 
+                    className="bg-gray-800 p-2 rounded text-gray-400 cursor-not-allowed border border-gray-700" 
+                    value={department} 
+                  />
+                </div>
+              </div>
+ 
+              <div className="mb-4">
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-400 mb-1">画像URL (Google Drive等) <span className="text-gray-500 text-[10px] border border-gray-600 px-1 rounded ml-1">任意</span></label>
+                  <input 
+                    className="bg-gray-700 p-2 rounded text-white border border-gray-600 focus:border-blue-500 outline-none w-full" 
+                    placeholder="https://..." 
+                    value={imageUrl} 
+                    onChange={e => setImageUrl(convertGoogleDriveLink(e.target.value))} 
+                  />
+                </div>
+              </div>
+ 
+              <div className="mb-4">
+                <label className="text-xs text-gray-400 mb-1 block">会場説明文 <span className="text-gray-500 text-[10px] border border-gray-600 px-1 rounded ml-1">任意</span> <span className="text-[10px] text-gray-500 ml-1">※最大500文字</span></label>
+                <textarea 
+                  className="w-full bg-gray-700 p-2 rounded text-white h-24 text-sm border border-gray-600 focus:border-blue-500 outline-none resize-none"
+                  placeholder="会場のアピールポイントや注意事項を入力してください。"
+                  maxLength={500}
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
                 />
-                {searchUserId && (
-                    <div className="text-xs text-pink-400 font-bold animate-pulse">
-                        ※該当チケットをハイライトします
+                <div className="text-right text-xs text-gray-500">{description.length}/500</div>
+              </div>
+
+              {/* ハッシュタグ設定エリア (追加) */}
+              <div className="mb-4 bg-gray-900/30 p-3 rounded border border-gray-700">
+                <label className="text-xs text-gray-400 mb-2 block font-bold">
+                  ハッシュタグ 
+                  <span className="text-gray-500 text-[10px] border border-gray-600 px-1 rounded ml-1 font-normal">任意</span> 
+                  <span className="text-[10px] text-gray-500 ml-1 font-normal">※最大100文字</span>
+                </label>
+ 
+                {/* プレビュー表示エリア */}
+                <div className="flex flex-wrap gap-2 mb-3 min-h-[24px]">
+                  {extractTags(rawTags).map((tag, idx) => (
+                    <span key={idx} className="bg-blue-600/30 text-blue-300 border border-blue-500/50 px-3 py-1 rounded-full text-xs font-bold shadow-sm flex items-center">
+                      #{tag}
+                    </span>
+                  ))}
+                  {extractTags(rawTags).length === 0 && (
+                    <span className="text-xs text-gray-500 italic flex items-center">プレビュー：認識されたタグがここに表示されます</span>
+                  )}
+                </div>
+ 
+                <input 
+                  type="text"
+                  className="w-full bg-gray-700 p-2 rounded text-white text-sm border border-gray-600 focus:border-blue-500 outline-none"
+                  placeholder="例: #ホラー (スペースで区切って「#」を付けて。複数OK 全角OK)"
+                  maxLength={100}
+                  value={rawTags}
+                  onChange={e => setRawTags(e.target.value)}
+                />
+              </div>
+ 
+              <div className="bg-gray-750 p-3 rounded border border-gray-600 mb-4 bg-gray-900/30">
+                <h4 className="text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">Operation Mode</h4>
+                <div className="flex flex-wrap gap-4 items-center">
+                  <div className="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded border border-gray-700">
+                    <span className={`text-xs font-bold ${!isQueueMode ? "text-blue-400" : "text-gray-500"}`}>🕒 時間予約制</span>
+                    <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                      <input type="checkbox" name="toggle" id="mode-toggle" 
+                        checked={isQueueMode} 
+                        onChange={(e) => setIsQueueMode(e.target.checked)}
+                        className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out"
+                        style={{ transform: isQueueMode ? 'translateX(100%)' : 'translateX(0)' }}
+                      />
+                      <label htmlFor="mode-toggle" className={`toggle-label block overflow-hidden h-5 rounded-full cursor-pointer ${isQueueMode ? "bg-green-600" : "bg-gray-600"}`}></label>
                     </div>
-                )}
+                    <span className={`text-xs font-bold ${isQueueMode ? "text-green-400" : "text-gray-500"}`}>🔢 順番待ち制</span>
+                  </div>
+ 
+                  <div className="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded border border-gray-700">
+                    <input type="checkbox" checked={isPaused} onChange={e => setIsPaused(e.target.checked)} className="accent-red-500 w-4 h-4 cursor-pointer" />
+                    <span className={`text-xs font-bold ${isPaused ? "text-red-400" : "text-gray-400"}`}>⛔ 受付を緊急停止</span>
+                  </div>
+                </div>
+              </div>
+ 
+              {!isQueueMode && (
+                <div className="bg-gray-750 p-3 rounded border border-gray-600 mb-4 bg-gray-900/30">
+                  <h4 className="text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">Time Settings (予約制のみ)</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-3">
+                    <div className="flex flex-col">
+                      <label className="text-[10px] text-gray-400 mb-1">開始時間 <span className="text-red-500">*</span></label>
+                      <input type="time" value={openTime} onChange={e => setOpenTime(e.target.value)} className="bg-gray-700 p-2 rounded text-sm outline-none border border-gray-600 focus:border-blue-500"/>
+                    </div>
+                    <div className="flex flex-col">
+                      <label className="text-[10px] text-gray-400 mb-1">終了時間 <span className="text-red-500">*</span></label>
+                      <input type="time" value={closeTime} onChange={e => setCloseTime(e.target.value)} className="bg-gray-700 p-2 rounded text-sm outline-none border border-gray-600 focus:border-blue-500"/>
+                    </div>
+                    <div className="flex flex-col">
+                      <label className="text-[10px] text-gray-400 mb-1">1枠の時間(分) <span className="text-red-500">*</span></label>
+                      <input type="number" value={duration} onChange={e => setDuration(Number(e.target.value))} className="bg-gray-700 p-2 rounded text-sm outline-none border border-gray-600 focus:border-blue-500" placeholder="分"/>
+                    </div>
+                    <div className="flex flex-col">
+                      <label className="text-[10px] text-gray-400 mb-1">枠ごとの定員(組) <span className="text-red-500">*</span></label>
+                      <input type="number" value={capacity} onChange={e => setCapacity(Number(e.target.value))} className="bg-gray-700 p-2 rounded text-sm outline-none border border-gray-600 focus:border-blue-500" placeholder="定員"/>
+                    </div>
+                    <div className="flex flex-col">
+                      <label className="text-[10px] text-gray-400 mb-1">事前解放(時間前) <span className="text-[8px] bg-gray-700 px-1 rounded text-gray-400">任意</span></label>
+                      <input type="time" value={releaseBeforeTime} onChange={e => setReleaseBeforeTime(e.target.value)} className="bg-gray-700 p-2 rounded text-sm outline-none border border-gray-600 focus:border-blue-500"/>
+                    </div>
+                  </div>
+                </div>
+              )}
+ 
+              <div className="bg-gray-750 p-3 rounded border border-gray-600 mb-4 bg-gray-900/30 flex items-center gap-4">
+                <div className="flex flex-col">
+                  <label className="text-[10px] text-gray-400 mb-1">1組の最大人数</label>
+                  <input type="number" value={groupLimit} onChange={e => setGroupLimit(Number(e.target.value))} className="w-20 bg-gray-700 p-2 rounded text-sm outline-none text-center border border-gray-600 focus:border-blue-500" />
+                </div>
+              </div>
+ 
+              <div className="flex gap-2">
+                <button onClick={handleSave} className="flex-1 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 py-3 rounded font-bold transition shadow-lg shadow-blue-900/40">変更を保存</button>
+                <button onClick={resetForm} className="bg-gray-700 hover:bg-gray-600 px-6 rounded text-sm transition border border-gray-600">キャンセル</button>
+              </div>
             </div>
+          ) : (
+            <div className="bg-gray-800/50 rounded p-3 mb-4 border border-gray-700 text-center text-xs text-gray-500">
+              ※設定を変更するには、下のリストから会場を選び「設定編集」ボタンを押してください。
+            </div>
+          )}
+ 
+          <div className="flex gap-2 items-center bg-gray-800 p-2 rounded border border-gray-600">
+            <span className="text-xl">🔍</span>
+            <input 
+              className="flex-1 bg-transparent text-white outline-none" 
+              placeholder="ユーザーIDまたはチケットID(6桁)を入力" 
+              value={searchUserId} 
+              onChange={e => setSearchUserId(e.target.value)} 
+            />
+            {searchUserId && (
+              <div className="text-xs text-pink-400 font-bold animate-pulse">
+                ※該当チケットをハイライトします
+              </div>
+            )}
+          </div>
         </div>
  
         {!expandedShopId && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {attractions.map(shop => {
-                    const hitInRes = shop.reservations?.some((r:any) => r.userId?.includes(searchUserId.toUpperCase()));
-                    const hitInQueue = shop.queue?.some((q:any) => q.userId?.includes(searchUserId.toUpperCase()) || q.ticketId?.includes(searchUserId.toUpperCase()));
-                    const hasUser = searchUserId && (hitInRes || hitInQueue);
-                    
-                    const blacklisted = isUserBlacklisted(shop);     
-                    const notWhitelisted = isUserNotWhitelisted(shop); 
-                    const adminRestricted = isAdminRestrictedAndNotAllowed(shop); 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {attractions.map(shop => {
+              const hitInRes = shop.reservations?.some((r:any) => r.userId?.includes(searchUserId.toUpperCase()));
+              const hitInQueue = shop.queue?.some((q:any) => q.userId?.includes(searchUserId.toUpperCase()) || q.ticketId?.includes(searchUserId.toUpperCase()));
+              const hasUser = searchUserId && (hitInRes || hitInQueue);
  
-                    const isLocked = blacklisted || notWhitelisted || adminRestricted;
+              const blacklisted = isUserBlacklisted(shop); 
+              const notWhitelisted = isUserNotWhitelisted(shop); 
+              const adminRestricted = isAdminRestrictedAndNotAllowed(shop); 
+
+              const isLocked = blacklisted || notWhitelisted || adminRestricted;
  
-                    return (
-                        <button 
-                            key={shop.id} 
-                            onClick={() => handleExpandShop(shop.id)} 
-                            className={`group p-4 rounded-xl border text-left flex items-start gap-4 transition hover:bg-gray-800 relative overflow-hidden
-                                ${hasUser ? 'bg-pink-900/40 border-pink-500' : 'bg-gray-800 border-gray-600'}
-                                ${isLocked ? 'opacity-70 bg-gray-900 grayscale' : ''}
-                            `}
-                        >
-                            {shop.imageUrl ? (
-                                <img src={shop.imageUrl} alt="" className="w-16 h-16 rounded object-cover bg-gray-700 flex-shrink-0" />
-                            ) : (
-                                <div className="w-16 h-16 rounded bg-gray-700 flex items-center justify-center text-2xl flex-shrink-0">🎪</div>
-                            )}
+              return (
+                <button 
+                  key={shop.id} 
+                  onClick={() => handleExpandShop(shop.id)} 
+                  className={`group p-4 rounded-xl border text-left flex items-start gap-4 transition hover:bg-gray-800 relative overflow-hidden
+                    ${hasUser ? 'bg-pink-900/40 border-pink-500' : 'bg-gray-800 border-gray-600'}
+                    ${isLocked ? 'opacity-70 bg-gray-900 grayscale' : ''}
+                  `}
+                >
+                  {shop.imageUrl ? (
+                    <img src={shop.imageUrl} alt="" className="w-16 h-16 rounded object-cover bg-gray-700 flex-shrink-0" />
+                  ) : (
+                    <div className="w-16 h-16 rounded bg-gray-700 flex items-center justify-center text-2xl flex-shrink-0">🎪</div>
+                  )}
  
-                            <div className="flex-1 min-w-0">
-                                <div className="flex flex-wrap items-center gap-2 mb-1">
-                                    <span className="text-yellow-400 font-bold font-mono text-xl">{shop.id}</span>
-                                    
-                                    {shop.department && (
-                                        <span className="text-xs bg-blue-900/50 text-blue-200 px-2 py-0.5 rounded border border-blue-800/50 truncate max-w-[100px]">
-                                            {shop.department}
-                                        </span>
-                                    )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="text-yellow-400 font-bold font-mono text-xl">{shop.id}</span>
  
-                                    {blacklisted && <span className="text-xs bg-red-900 text-red-200 border border-red-700 px-2 py-0.5 rounded font-bold">⛔ BAN指定</span>}
-                                    {notWhitelisted && <span className="text-xs bg-gray-700 text-gray-300 border border-gray-500 px-2 py-0.5 rounded font-bold">🔒 許可外</span>}
-                                    {(!blacklisted && !notWhitelisted && adminRestricted) && <span className="text-xs bg-purple-900 text-purple-200 border border-purple-700 px-2 py-0.5 rounded font-bold">🛡️ スタッフ限</span>}
-                                    
-                                    {shop.isQueueMode ? (
-                                        <span className="text-xs bg-green-900/60 text-green-300 border border-green-700 px-2 py-0.5 rounded">🔢 順番待ち</span>
-                                    ) : (
-                                        <span className="text-xs bg-blue-900/60 text-blue-300 border border-blue-700 px-2 py-0.5 rounded">🕒 時間予約</span>
-                                    )}
-                                </div>
+                      {shop.department && (
+                        <span className="text-xs bg-blue-900/50 text-blue-200 px-2 py-0.5 rounded border border-blue-800/50 truncate max-w-[100px]">
+                          {shop.department}
+                        </span>
+                      )}
  
-                                <div className="flex items-center gap-2">
-                                    <span className="font-bold text-lg truncate w-full">{shop.name}</span>
-                                    {shop.isPaused && <span className="text-xs bg-red-600 px-2 py-0.5 rounded text-white whitespace-nowrap">停止中</span>}
-                                </div>
-                                <div className="text-xs text-gray-400 mt-1">
-                                    {shop.isQueueMode ? (
-                                        <span>待機: {shop.queue?.length || 0}組</span>
-                                    ) : (
-                                        <span>予約: {shop.reservations?.length || 0}件</span>
-                                    )}
-                                </div>
-                            </div>
+                      {blacklisted && <span className="text-xs bg-red-900 text-red-200 border border-red-700 px-2 py-0.5 rounded font-bold">⛔ BAN指定</span>}
+                      {notWhitelisted && <span className="text-xs bg-gray-700 text-gray-300 border border-gray-500 px-2 py-0.5 rounded font-bold">🔒 許可外</span>}
+                      {(!blacklisted && !notWhitelisted && adminRestricted) && <span className="text-xs bg-purple-900 text-purple-200 border border-purple-700 px-2 py-0.5 rounded font-bold">🛡️ スタッフ限</span>}
  
-                            <div className="self-center text-gray-400 text-2xl group-hover:text-white transition-transform group-hover:translate-x-1">
-                                ›
-                            </div>
-                        </button>
-                    );
-                })}
-            </div>
+                      {shop.isQueueMode ? (
+                        <span className="text-xs bg-green-900/60 text-green-300 border border-green-700 px-2 py-0.5 rounded">🔢 順番待ち</span>
+                      ) : (
+                        <span className="text-xs bg-blue-900/60 text-blue-300 border border-blue-700 px-2 py-0.5 rounded">🕒 時間予約</span>
+                      )}
+                    </div>
+ 
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-lg truncate w-full">{shop.name}</span>
+                      {shop.isPaused && <span className="text-xs bg-red-600 px-2 py-0.5 rounded text-white whitespace-nowrap">停止中</span>}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      {shop.isQueueMode ? (
+                        <span>待機: {shop.queue?.length || 0}組</span>
+                      ) : (
+                        <span>予約: {shop.reservations?.length || 0}件</span>
+                      )}
+                    </div>
+                  </div>
+ 
+                  <div className="self-center text-gray-400 text-2xl group-hover:text-white transition-transform group-hover:translate-x-1">
+                    ›
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         )}
  
         {expandedShopId && targetShop && (
-            <div className="animate-fade-in">
-                <button onClick={() => { setExpandedShopId(null); setIsEditing(false); }} className="mb-4 flex items-center gap-2 text-gray-400 hover:text-white">
-                    ← 会場一覧に戻る
-                </button>
+          <div className="animate-fade-in">
+            <button onClick={() => { setExpandedShopId(null); setIsEditing(false); }} className="mb-4 flex items-center gap-2 text-gray-400 hover:text-white">
+              ← 会場一覧に戻る
+            </button>
  
-                <div className="bg-gray-800 rounded-xl border border-gray-600 overflow-hidden">
-                    <div className="bg-gray-700 p-4 flex justify-between items-start relative overflow-hidden">
-                        {targetShop.imageUrl && (
-                            <div className="absolute inset-0 z-0 opacity-20">
-                                <img src={targetShop.imageUrl} className="w-full h-full object-cover" alt="" />
-                            </div>
-                        )}
+            <div className="bg-gray-800 rounded-xl border border-gray-600 overflow-hidden">
+              <div className="bg-gray-700 p-4 flex justify-between items-start relative overflow-hidden">
+                {targetShop.imageUrl && (
+                  <div className="absolute inset-0 z-0 opacity-20">
+                    <img src={targetShop.imageUrl} className="w-full h-full object-cover" alt="" />
+                  </div>
+                )}
  
-                        <div className="relative z-10">
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="text-yellow-400 font-mono font-bold text-xl">{targetShop.id}</span>
-                                {targetShop.department && (
-                                    <span className="text-xs bg-black/50 text-white px-2 py-0.5 rounded backdrop-blur-sm border border-white/20">
-                                        {targetShop.department}
-                                    </span>
-                                )}
-                                <span className={`text-xs px-2 py-0.5 rounded border backdrop-blur-sm ${targetShop.isQueueMode ? "bg-green-600/50 border-green-400 text-white" : "bg-blue-600/50 border-blue-400 text-white"}`}>
-                                    {targetShop.isQueueMode ? "順番待ち制" : "時間予約制"}
-                                </span>
-                            </div>
-                            <h2 className="text-2xl font-bold flex items-center gap-2 text-white drop-shadow-md">
-                                {targetShop.name}
-                            </h2>
-                            <p className="text-xs text-gray-300 mt-1 drop-shadow-md">Pass: **** | 定員: {targetShop.capacity}組</p>
-                        </div>
- 
-                        <div className="flex gap-2 relative z-10">
-                            <button onClick={() => startEdit(targetShop)} className="bg-blue-600 text-xs px-3 py-2 rounded hover:bg-blue-500 font-bold shadow-lg">⚙️ 設定編集</button>
-                            <button onClick={() => handleDeleteVenue(targetShop.id)} className="bg-red-600 text-xs px-3 py-2 rounded hover:bg-red-500 shadow-lg">削除</button>
-                        </div>
-                    </div>
- 
-                    <div className="p-4 space-y-6">
-                        {targetShop.description && (
-                            <div className="bg-gray-700/50 p-4 rounded-lg border border-gray-600 text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">
-                                {targetShop.description}
-                            </div>
-                        )}
-                        
-                        {/* プレビュー画面のハッシュタグ表示 */}
-                        {targetShop.tags && targetShop.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                                {targetShop.tags.map((tag: string, idx: number) => (
-                                    <span key={idx} className="bg-blue-600/30 text-blue-300 border border-blue-500/50 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
-                                        #{tag}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
- 
-                        <div className="flex justify-end">
-                            <button
-                                onClick={() => openGuestModal(targetShop)}
-                                className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-white text-sm px-4 py-2 rounded-lg font-bold shadow-md transition"
-                            >
-                                <span>👤</span>
-                                <span>ゲスト枠を追加</span>
-                            </button>
-                        </div>
- 
-                        {targetShop.isQueueMode ? (
-                            <div className="bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden">
-                                <div className="bg-gray-700 px-4 py-2 border-b border-gray-600 flex items-center justify-between">
-                                    <h3 className="font-bold text-green-400 flex items-center gap-2">
-                                        <span>📋 待機列リスト</span>
-                                        <span className="text-xs text-white bg-gray-600 px-2 py-0.5 rounded-full">{targetShop.queue?.length || 0}組待ち</span>
-                                    </h3>
-                                </div>
-                                
-                                {(!targetShop.queue || targetShop.queue.length === 0) ? (
-                                    <div className="p-8 text-center text-gray-500">現在の待機列はありません</div>
-                                ) : (
-                                    <div className="divide-y divide-gray-700">
-                                        <div className="grid grid-cols-12 gap-2 px-4 py-2 text-xs text-gray-400 font-bold bg-gray-800">
-                                            <div className="col-span-1">No.</div>
-                                            <div className="col-span-3">Ticket / User</div>
-                                            <div className="col-span-2 text-center">人数</div>
-                                            <div className="col-span-2 text-center">Status</div>
-                                            <div className="col-span-4 text-center">Action</div>
-                                        </div>
- 
-                                        {targetShop.queue.map((ticket: any, index: number) => {
-                                            const isMatch = searchUserId && (
-                                                ticket.ticketId?.includes(searchUserId.toUpperCase()) || 
-                                                ticket.userId?.includes(searchUserId.toUpperCase())
-                                            );
- 
-                                            const isCalled = ticket.status === "ready";
- 
-                                            return (
-                                                <div key={ticket.ticketId} className={`grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-gray-800/50 transition ${isMatch ? 'bg-pink-900/20 ring-1 ring-pink-500 inset-0' : ''}`}>
-                                                    <div className="col-span-1 text-lg font-bold text-gray-500 font-mono">
-                                                        {index + 1}
-                                                    </div>
- 
-                                                    <div className="col-span-3">
-                                                        <div className="text-lg font-bold text-yellow-400 font-mono tracking-wider flex items-center gap-1">
-                                                            {ticket.ticketId}
-                                                            {ticket.isGuest && <span className="text-[9px] bg-amber-700 text-amber-200 px-1 rounded">G</span>}
-                                                        </div>
-                                                        <div className="text-[10px] text-gray-500 font-mono truncate">
-                                                            UID: {ticket.userId}
-                                                        </div>
-                                                    </div>
- 
-                                                    <div className="col-span-2 text-center">
-                                                        <span className="bg-gray-700 px-2 py-1 rounded text-sm font-bold text-white">
-                                                            {ticket.count}名
-                                                        </span>
-                                                    </div>
- 
-                                                    <div className="col-span-2 text-center">
-                                                        {isCalled ? (
-                                                            <span className="text-xs bg-red-600 text-white px-2 py-1 rounded font-bold animate-pulse">
-                                                                呼び出し中
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-xs bg-blue-900 text-blue-200 px-2 py-1 rounded">
-                                                                待機中
-                                                            </span>
-                                                        )}
-                                                    </div>
- 
-                                                    <div className="col-span-4 flex justify-end gap-1">
-                                                        {!isCalled && (
-                                                            <button 
-                                                                onClick={() => handleQueueAction(targetShop, ticket, "call")}
-                                                                className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-2 py-1.5 rounded font-bold shadow-sm"
-                                                            >
-                                                                Call
-                                                            </button>
-                                                        )}
-                                                        
-                                                        <button 
-                                                            onClick={() => handleQueueAction(targetShop, ticket, "enter")}
-                                                            className="bg-green-700 hover:bg-green-600 text-white text-xs px-2 py-1.5 rounded font-bold shadow-sm"
-                                                            title="パスワードなしで入場済みにします"
-                                                        >
-                                                            入場
-                                                        </button>
- 
-                                                        <button 
-                                                            onClick={() => handleQueueAction(targetShop, ticket, "cancel")}
-                                                            className="bg-gray-700 hover:bg-red-600 text-gray-300 hover:text-white text-xs px-2 py-1.5 rounded transition"
-                                                            title="列から削除します"
-                                                        >
-                                                            ×
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="space-y-6">
-                                {Object.entries(getReservationsByTime(targetShop)).map(([time, reservations]: any) => {
-                                    const slotCount = targetShop.slots[time] || 0;
-                                    const isFull = slotCount >= targetShop.capacity;
- 
-                                    return (
-                                        <div key={time} className={`border rounded-lg p-3 ${isFull ? 'border-red-500/50 bg-red-900/10' : 'border-gray-600 bg-gray-900/50'}`}>
-                                            <div className="flex justify-between items-center mb-2 border-b border-gray-700 pb-2">
-                                                <h3 className="font-bold text-lg text-blue-300">{time}</h3>
-                                                <span className={`text-sm font-bold ${isFull ? 'text-red-400' : 'text-green-400'}`}>
-                                                    予約: {slotCount} / {targetShop.capacity}
-                                                </span>
-                                            </div>
- 
-                                            <div className="space-y-2">
-                                                {reservations.length === 0 && <p className="text-xs text-gray-500 text-center py-1">予約なし</p>}
-                                                
-                                                {reservations.map((res: any) => {
-                                                    const isMatch = searchUserId && res.userId?.includes(searchUserId.toUpperCase());
-                                                    
-                                                    return (
-                                                        <div key={res.timestamp} className={`flex justify-between items-center p-2 rounded ${res.status === 'used' ? 'bg-gray-800 opacity-60' : 'bg-gray-700'} ${isMatch ? 'ring-2 ring-pink-500' : ''}`}>
-                                                            <div>
-                                                                <div className="font-mono font-bold text-yellow-400 flex items-center gap-1">
-                                                                    <span>ID: {res.userId}</span>
-                                                                    {res.isGuest && <span className="text-[9px] bg-amber-700 text-amber-200 px-1 rounded">GUEST</span>}
-                                                                    <span className="ml-1 text-sm text-white font-normal bg-gray-600 px-2 py-0.5 rounded-full">
-                                                                        {res.count || 1}名
-                                                                    </span>
-                                                                </div>
-                                                                <div className="text-xs text-gray-300 mt-1">
-                                                                    {res.status === 'used' ? '✅ 入場済' : '🔵 予約中'}
-                                                                </div>
-                                                            </div>
-                                                            
-                                                            <div className="flex gap-1">
-                                                                {res.status !== 'used' ? (
-                                                                    <>
-                                                                        <button onClick={() => toggleReservationStatus(targetShop, res, "used")} className="bg-green-600 text-xs px-3 py-1.5 rounded font-bold hover:bg-green-500">入場</button>
-                                                                        <button onClick={() => cancelReservation(targetShop, res)} className="bg-red-600 text-xs px-3 py-1.5 rounded hover:bg-red-500">取消</button>
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                         <button onClick={() => toggleReservationStatus(targetShop, res, "reserved")} className="bg-gray-600 text-xs px-3 py-1.5 rounded hover:bg-gray-500">戻す</button>
-                                                                    </>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-yellow-400 font-mono font-bold text-xl">{targetShop.id}</span>
+                    {targetShop.department && (
+                      <span className="text-xs bg-black/50 text-white px-2 py-0.5 rounded backdrop-blur-sm border border-white/20">
+                        {targetShop.department}
+                      </span>
+                    )}
+                    <span className={`text-xs px-2 py-0.5 rounded border backdrop-blur-sm ${targetShop.isQueueMode ? "bg-green-600/50 border-green-400 text-white" : "bg-blue-600/50 border-blue-400 text-white"}`}>
+                      {targetShop.isQueueMode ? "順番待ち制" : "時間予約制"}
+                    </span>
+                  </div>
+                  <h2 className="text-2xl font-bold flex items-center gap-2 text-white drop-shadow-md">
+                    {targetShop.name}
+                  </h2>
+                  <p className="text-xs text-gray-300 mt-1 drop-shadow-md">Pass: **** | 定員: {targetShop.capacity}組</p>
                 </div>
+ 
+                <div className="flex gap-2 relative z-10">
+                  <button onClick={() => startEdit(targetShop)} className="bg-blue-600 text-xs px-3 py-2 rounded hover:bg-blue-500 font-bold shadow-lg">⚙️ 設定編集</button>
+                  <button onClick={() => handleDeleteVenue(targetShop.id)} className="bg-red-600 text-xs px-3 py-2 rounded hover:bg-red-500 shadow-lg">削除</button>
+                </div>
+              </div>
+ 
+              <div className="p-4 space-y-6">
+                {targetShop.description && (
+                  <div className="bg-gray-700/50 p-4 rounded-lg border border-gray-600 text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">
+                    {targetShop.description}
+                  </div>
+                )}
+ 
+                {/* プレビュー画面のハッシュタグ表示 */}
+                {targetShop.tags && targetShop.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {targetShop.tags.map((tag: string, idx: number) => (
+                      <span key={idx} className="bg-blue-600/30 text-blue-300 border border-blue-500/50 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+ 
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => openGuestModal(targetShop)}
+                    className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-white text-sm px-4 py-2 rounded-lg font-bold shadow-md transition"
+                  >
+                    <span>👤</span>
+                    <span>ゲスト枠を追加</span>
+                  </button>
+                </div>
+ 
+                {targetShop.isQueueMode ? (
+                  <div className="bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden">
+                    <div className="bg-gray-700 px-4 py-2 border-b border-gray-600 flex items-center justify-between">
+                      <h3 className="font-bold text-green-400 flex items-center gap-2">
+                        <span>📋 待機列リスト</span>
+                        <span className="text-xs text-white bg-gray-600 px-2 py-0.5 rounded-full">{targetShop.queue?.length || 0}組待ち</span>
+                      </h3>
+                    </div>
+ 
+                    {(!targetShop.queue || targetShop.queue.length === 0) ? (
+                      <div className="p-8 text-center text-gray-500">現在の待機列はありません</div>
+                    ) : (
+                      <div className="divide-y divide-gray-700">
+                        <div className="grid grid-cols-12 gap-2 px-4 py-2 text-xs text-gray-400 font-bold bg-gray-800">
+                          <div className="col-span-1">No.</div>
+                          <div className="col-span-3">Ticket / User</div>
+                          <div className="col-span-2 text-center">人数</div>
+                          <div className="col-span-2 text-center">Status</div>
+                          <div className="col-span-4 text-center">Action</div>
+                        </div>
+ 
+                        {targetShop.queue.map((ticket: any, index: number) => {
+                          const isMatch = searchUserId && (
+                            ticket.ticketId?.includes(searchUserId.toUpperCase()) || 
+                            ticket.userId?.includes(searchUserId.toUpperCase())
+                          );
+ 
+                          const isCalled = ticket.status === "ready";
+ 
+                          return (
+                            <div key={ticket.ticketId} className={`grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-gray-800/50 transition ${isMatch ? 'bg-pink-900/20 ring-1 ring-pink-500 inset-0' : ''}`}>
+                              <div className="col-span-1 text-lg font-bold text-gray-500 font-mono">
+                                {index + 1}
+                              </div>
+ 
+                              <div className="col-span-3">
+                                <div className="text-lg font-bold text-yellow-400 font-mono tracking-wider flex items-center gap-1">
+                                  {ticket.ticketId}
+                                  {ticket.isGuest && <span className="text-[9px] bg-amber-700 text-amber-200 px-1 rounded">G</span>}
+                                </div>
+                                <div className="text-[10px] text-gray-500 font-mono truncate">
+                                  UID: {ticket.userId}
+                                </div>
+                              </div>
+ 
+                              <div className="col-span-2 text-center">
+                                <span className="bg-gray-700 px-2 py-1 rounded text-sm font-bold text-white">
+                                  {ticket.count}名
+                                </span>
+                              </div>
+ 
+                              <div className="col-span-2 text-center">
+                                {isCalled ? (
+                                  <span className="text-xs bg-red-600 text-white px-2 py-1 rounded font-bold animate-pulse">
+                                    呼び出し中
+                                  </span>
+                                ) : (
+                                  <span className="text-xs bg-blue-900 text-blue-200 px-2 py-1 rounded">
+                                    待機中
+                                  </span>
+                                )}
+                              </div>
+ 
+                              <div className="col-span-4 flex justify-end gap-1">
+                                {!isCalled && (
+                                  <button 
+                                    onClick={() => handleQueueAction(targetShop, ticket, "call")}
+                                    className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-2 py-1.5 rounded font-bold shadow-sm"
+                                  >
+                                    Call
+                                  </button>
+                                )}
+ 
+                                <button 
+                                  onClick={() => handleQueueAction(targetShop, ticket, "enter")}
+                                  className="bg-green-700 hover:bg-green-600 text-white text-xs px-2 py-1.5 rounded font-bold shadow-sm"
+                                  title="パスワードなしで入場済みにします"
+                                >
+                                  入場
+                                </button>
+ 
+                                <button 
+                                  onClick={() => handleQueueAction(targetShop, ticket, "cancel")}
+                                  className="bg-gray-700 hover:bg-red-600 text-gray-300 hover:text-white text-xs px-2 py-1.5 rounded transition"
+                                  title="列から削除します"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {Object.entries(getReservationsByTime(targetShop)).map(([time, reservations]: any) => {
+                      const slotCount = targetShop.slots[time] || 0;
+                      const isFull = slotCount >= targetShop.capacity;
+ 
+                      return (
+                        <div key={time} className={`border rounded-lg p-3 ${isFull ? 'border-red-500/50 bg-red-900/10' : 'border-gray-600 bg-gray-900/50'}`}>
+                          <div className="flex justify-between items-center mb-2 border-b border-gray-700 pb-2">
+                            <h3 className="font-bold text-lg text-blue-300">{time}</h3>
+                            <span className={`text-sm font-bold ${isFull ? 'text-red-400' : 'text-green-400'}`}>
+                              予約: {slotCount} / {targetShop.capacity}
+                            </span>
+                          </div>
+ 
+                          <div className="space-y-2">
+                            {reservations.length === 0 && <p className="text-xs text-gray-500 text-center py-1">予約なし</p>}
+ 
+                            {reservations.map((res: any) => {
+                              const isMatch = searchUserId && res.userId?.includes(searchUserId.toUpperCase());
+ 
+                              return (
+                                <div key={res.timestamp} className={`flex justify-between items-center p-2 rounded ${res.status === 'used' ? 'bg-gray-800 opacity-60' : 'bg-gray-700'} ${isMatch ? 'ring-2 ring-pink-500' : ''}`}>
+                                  <div>
+                                    <div className="font-mono font-bold text-yellow-400 flex items-center gap-1">
+                                      <span>ID: {res.userId}</span>
+                                      {res.isGuest && <span className="text-[9px] bg-amber-700 text-amber-200 px-1 rounded">GUEST</span>}
+                                      <span className="ml-1 text-sm text-white font-normal bg-gray-600 px-2 py-0.5 rounded-full">
+                                        {res.count || 1}名
+                                      </span>
+                                    </div>
+                                    <div className="text-xs text-gray-300 mt-1">
+                                      {res.status === 'used' ? '✅ 入場済' : '🔵 予約中'}
+                                    </div>
+                                  </div>
+ 
+                                  <div className="flex gap-1">
+                                    {res.status !== 'used' ? (
+                                      <>
+                                        <button onClick={() => toggleReservationStatus(targetShop, res, "used")} className="bg-green-600 text-xs px-3 py-1.5 rounded font-bold hover:bg-green-500">入場</button>
+                                        <button onClick={() => cancelReservation(targetShop, res)} className="bg-red-600 text-xs px-3 py-1.5 rounded hover:bg-red-500">取消</button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <button onClick={() => toggleReservationStatus(targetShop, res, "reserved")} className="bg-gray-600 text-xs px-3 py-1.5 rounded hover:bg-gray-500">戻す</button>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
+          </div>
         )}
       </div>
  
       {guestModalShopId && guestModalShop && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-              <div className="bg-gray-800 rounded-2xl border border-amber-500/50 shadow-2xl shadow-amber-900/30 w-full max-w-sm p-6 animate-fade-in">
-                  <div className="flex items-center gap-3 mb-5">
-                      <div className="w-10 h-10 rounded-full bg-amber-600 flex items-center justify-center text-xl flex-shrink-0">👤</div>
-                      <div>
-                          <h2 className="text-lg font-bold text-white">ゲスト枠を追加</h2>
-                          <p className="text-xs text-amber-400 font-mono">{guestModalShop.name}</p>
-                      </div>
-                  </div>
- 
-                  <div className="bg-gray-900/70 border border-gray-600 rounded-lg px-4 py-3 mb-4 flex justify-between items-center">
-                      <span className="text-xs text-gray-400">割り当てられるGuest ID</span>
-                      <span className="text-lg font-bold text-amber-400 font-mono tracking-widest">
-                          {generateGuestId(guestModalShop)}
-                      </span>
-                  </div>
- 
-                  {!guestModalShop.isQueueMode && (
-                      <div className="mb-4">
-                          <label className="text-xs text-gray-400 mb-2 block">予約する時間枠を選択 <span className="text-red-500">*</span></label>
-                          <select
-                              value={guestSelectedTime}
-                              onChange={e => setGuestSelectedTime(e.target.value)}
-                              className="w-full bg-gray-700 border border-gray-500 focus:border-amber-500 outline-none rounded-lg px-3 py-2 text-white text-sm"
-                          >
-                              <option value="">-- 時間を選択 --</option>
-                              {getAvailableTimeSlots(guestModalShop).map(time => {
-                                  const slotCount = guestModalShop.slots?.[time] ?? 0;
-                                  const remaining = guestModalShop.capacity - slotCount;
-                                  return (
-                                      <option key={time} value={time}>
-                                          {time} （残り {remaining} 枠）
-                                      </option>
-                                  );
-                              })}
-                          </select>
-                          {getAvailableTimeSlots(guestModalShop).length === 0 && (
-                              <p className="text-xs text-red-400 mt-1">予約可能な時間枠がありません</p>
-                          )}
-                      </div>
-                  )}
- 
-                  {guestModalShop.isQueueMode && (
-                      <div className="mb-4 bg-green-900/20 border border-green-700/50 rounded-lg px-4 py-3 text-xs text-green-300">
-                          待機列の最後尾（現在 {guestModalShop.queue?.length || 0}組目）に追加されます
-                      </div>
-                  )}
- 
-                  <div className="mb-6">
-                      <label className="text-xs text-gray-400 mb-2 block">人数</label>
-                      <div className="flex items-center gap-3">
-                          <button
-                              onClick={() => setGuestCount(c => Math.max(1, c - 1))}
-                              className="w-9 h-9 rounded-full bg-gray-700 hover:bg-gray-600 text-white font-bold text-lg flex items-center justify-center transition"
-                          >
-                              −
-                          </button>
-                          <span className="flex-1 text-center text-2xl font-bold text-white font-mono">
-                              {guestCount}<span className="text-sm text-gray-400 ml-1">名</span>
-                          </span>
-                          <button
-                              onClick={() => setGuestCount(c => Math.min(guestModalShop.groupLimit || 10, c + 1))}
-                              className="w-9 h-9 rounded-full bg-gray-700 hover:bg-gray-600 text-white font-bold text-lg flex items-center justify-center transition"
-                          >
-                              ＋
-                          </button>
-                      </div>
-                      <p className="text-[10px] text-gray-500 text-center mt-1">最大 {guestModalShop.groupLimit || 10}名</p>
-                  </div>
- 
-                  <div className="flex gap-3">
-                      <button
-                          onClick={() => setGuestModalShopId(null)}
-                          className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg text-sm transition border border-gray-600"
-                      >
-                          キャンセル
-                      </button>
-                      <button
-                          onClick={handleAddGuestSlot}
-                          disabled={!guestModalShop.isQueueMode && !guestSelectedTime}
-                          className="flex-1 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed text-white py-2.5 rounded-lg text-sm font-bold transition shadow-lg"
-                      >
-                          追加する
-                      </button>
-                  </div>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-gray-800 rounded-2xl border border-amber-500/50 shadow-2xl shadow-amber-900/30 w-full max-w-sm p-6 animate-fade-in">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-full bg-amber-600 flex items-center justify-center text-xl flex-shrink-0">👤</div>
+              <div>
+                <h2 className="text-lg font-bold text-white">ゲスト枠を追加</h2>
+                <p className="text-xs text-amber-400 font-mono">{guestModalShop.name}</p>
               </div>
+            </div>
+ 
+            <div className="bg-gray-900/70 border border-gray-600 rounded-lg px-4 py-3 mb-4 flex justify-between items-center">
+              <span className="text-xs text-gray-400">割り当てられるGuest ID</span>
+              <span className="text-lg font-bold text-amber-400 font-mono tracking-widest">
+                {generateGuestId(guestModalShop)}
+              </span>
+            </div>
+ 
+            {!guestModalShop.isQueueMode && (
+              <div className="mb-4">
+                <label className="text-xs text-gray-400 mb-2 block">予約する時間枠を選択 <span className="text-red-500">*</span></label>
+                <select
+                  value={guestSelectedTime}
+                  onChange={e => setGuestSelectedTime(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-500 focus:border-amber-500 outline-none rounded-lg px-3 py-2 text-white text-sm"
+                >
+                  <option value="">-- 時間を選択 --</option>
+                  {getAvailableTimeSlots(guestModalShop).map(time => {
+                    const slotCount = guestModalShop.slots?.[time] ?? 0;
+                    const remaining = guestModalShop.capacity - slotCount;
+                    return (
+                      <option key={time} value={time}>
+                        {time} （残り {remaining} 枠）
+                      </option>
+                    );
+                  })}
+                </select>
+                {getAvailableTimeSlots(guestModalShop).length === 0 && (
+                  <p className="text-xs text-red-400 mt-1">予約可能な時間枠がありません</p>
+                )}
+              </div>
+            )}
+ 
+            {guestModalShop.isQueueMode && (
+              <div className="mb-4 bg-green-900/20 border border-green-700/50 rounded-lg px-4 py-3 text-xs text-green-300">
+                待機列の最後尾（現在 {guestModalShop.queue?.length || 0}組目）に追加されます
+              </div>
+            )}
+ 
+            <div className="mb-6">
+              <label className="text-xs text-gray-400 mb-2 block">人数</label>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setGuestCount(c => Math.max(1, c - 1))}
+                  className="w-9 h-9 rounded-full bg-gray-700 hover:bg-gray-600 text-white font-bold text-lg flex items-center justify-center transition"
+                >
+                  −
+                </button>
+                <span className="flex-1 text-center text-2xl font-bold text-white font-mono">
+                  {guestCount}<span className="text-sm text-gray-400 ml-1">名</span>
+                </span>
+                <button
+                  onClick={() => setGuestCount(c => Math.min(guestModalShop.groupLimit || 10, c + 1))}
+                  className="w-9 h-9 rounded-full bg-gray-700 hover:bg-gray-600 text-white font-bold text-lg flex items-center justify-center transition"
+                >
+                  ＋
+                </button>
+              </div>
+              <p className="text-[10px] text-gray-500 text-center mt-1">最大 {guestModalShop.groupLimit || 10}名</p>
+            </div>
+ 
+            <div className="flex gap-3">
+              <button
+                onClick={() => setGuestModalShopId(null)}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg text-sm transition border border-gray-600"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleAddGuestSlot}
+                disabled={!guestModalShop.isQueueMode && !guestSelectedTime}
+                className="flex-1 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed text-white py-2.5 rounded-lg text-sm font-bold transition shadow-lg"
+              >
+                追加する
+              </button>
+            </div>
           </div>
+        </div>
       )}
     </div>
   );
 }
-
-
