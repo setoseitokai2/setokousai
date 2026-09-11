@@ -756,7 +756,7 @@ const handleConfirmBooking = async () => {
 　　　　　　　  onClick={() => { setSelectedShop(null); setDraftBooking(null); setBookingFailed(false); }} 
   　　　　　　　className={`absolute ${(selectedShop.headerUrl || selectedShop.imageUrl) ? "top-14" : "top-3"} left-3 bg-black/50 text-white px-4 py-2 rounded-full text-sm backdrop-blur-md z-10 hover:bg-black/70 transition`}
 　　　　　　　>
- 　　　　　　　 ← 戻る
+         ← 戻る
 　　　　　　　</button>
 
 　　　　　　　<div className={`p-5 border-b bg-gray-50 ${!(selectedShop.headerUrl || selectedShop.imageUrl) ? "pt-16" : ""}`}>
