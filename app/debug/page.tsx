@@ -435,24 +435,24 @@ const getReservationsByTime = (shop: any) => {
  };
  
 const getAvailableTimeSlots = (shop: any): string[] => {if (!shop || !shop.slots) return [];
-  return Object.keys(shop.slots).sort().filter(time => {
-    return (shop.slots[time] ?? 0) < shop.capacity;
-  });
+ return Object.keys(shop.slots).sort().filter(time => {
+ return (shop.slots[time] ?? 0) < shop.capacity;
+ });
 };
 
 return (
-  <div className="min-h-screen bg-gray-900 text-white font-sans">
-    
-    <div className="bg-gray-800 border-b border-gray-700 px-4 py-2 flex justify-between items-center sticky top-0 z-50 shadow-md">
-      <div className="text-xs text-gray-400">Logged in as:</div>
-      <div className="font-mono font-bold text-yellow-400 text-lg tracking-wider">
-        {myUserId || "---"}
-      </div>
-    </div>
+ <div className="min-h-screen bg-gray-900 text-white font-sans">
+ 
+<div className="bg-gray-800 border-b border-gray-700 px-4 py-2 flex justify-between items-center sticky top-0 z-50 shadow-md">
+ <div className="text-xs text-gray-400">Logged in as:</div>
+ <div className="font-mono font-bold text-yellow-400 text-lg tracking-wider">
+ {myUserId || "---"}
+ </div>
+ </div>
 
-    <div className="max-w-4xl mx-auto p-4 pb-32">
-      <div className="mb-6 border-b border-gray-700 pb-4">
-        <h1 className="text-2xl font-bold text-white mb-4">予約管理</h1>
+ <div className="max-w-4xl mx-auto p-4 pb-32">
+ <div className="mb-6 border-b border-gray-700 pb-4">
+ <h1 className="text-2xl font-bold text-white mb-4">予約管理</h1>
  
 {isEditing ? (
  <div className="bg-gray-800 rounded-lg p-4 border border-blue-500 mb-4 animate-fade-in shadow-lg shadow-blue-900/20">
@@ -502,12 +502,12 @@ value={department}
  
 <div className="grid gap-4 md:grid-cols-2 mb-4">
  <div className="flex flex-col">
-  <label className="text-xs text-gray-400 mb-1">アイコン画像 (1:1推奨) <span className="text-gray-500 text-[10px] border border-gray-600 px-1 rounded ml-1">任意</span></label>
-  <input className="w-full bg-gray-700 p-2 rounded text-white border border-gray-600 focus:border-blue-500 outline-none" placeholder="https://..." value={iconUrl} onChange={e => setIconUrl(convertGoogleDriveLink(e.target.value))} />
+ <label className="text-xs text-gray-400 mb-1">アイコン画像 (1:1推奨) <span className="text-gray-500 text-[10px] border border-gray-600 px-1 rounded ml-1">任意</span></label>
+ <input className="w-full bg-gray-700 p-2 rounded text-white border border-gray-600 focus:border-blue-500 outline-none" placeholder="https://..." value={iconUrl} onChange={e => setIconUrl(convertGoogleDriveLink(e.target.value))} />
  </div>
  <div className="flex flex-col">
-  <label className="text-xs text-gray-400 mb-1">ヘッダー画像 (16:9推奨) <span className="text-gray-500 text-[10px] border border-gray-600 px-1 rounded ml-1">任意</span></label>
-  <input className="w-full bg-gray-700 p-2 rounded text-white border border-gray-600 focus:border-blue-500 outline-none" placeholder="https://..." value={headerUrl} onChange={e => setHeaderUrl(convertGoogleDriveLink(e.target.value))} />
+ <label className="text-xs text-gray-400 mb-1">ヘッダー画像 (16:9推奨) <span className="text-gray-500 text-[10px] border border-gray-600 px-1 rounded ml-1">任意</span></label>
+ <input className="w-full bg-gray-700 p-2 rounded text-white border border-gray-600 focus:border-blue-500 outline-none" placeholder="https://..." value={headerUrl} onChange={e => setHeaderUrl(convertGoogleDriveLink(e.target.value))} />
  </div>
 </div>
  
@@ -836,6 +836,7 @@ return (
  <span className="text-xs bg-blue-900 text-blue-200 px-2 py-1 rounded">
  待機中
  </span>
+ )}
  </div>
  
 <div className="col-span-4 flex justify-end gap-1">
@@ -1025,5 +1026,3 @@ return (
  </div>
  );
 }
-
-```
