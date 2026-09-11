@@ -66,12 +66,12 @@ export default function Footer() {
           
           {/* 1行目: 英語のメッセージ（レトロゲーム風に font-mono を設定） */}
           <p className="font-mono text-gray-800 text-[18px] font-bold tracking-widest mb-2">
-            Thank you for playing
+            Thank you for using our app
           </p>
           
           {/* 2行目: 日本語のメッセージ（少し色を変えて強調しています） */}
           <p className="font-sans text-[#ff6600] text-[14px] font-bold tracking-wide">
-            使ってくれてありがとう
+            Thanks for making this festival special
           </p>
           
         </div>
