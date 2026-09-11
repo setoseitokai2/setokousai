@@ -1,8 +1,3 @@
-ご提示いただいた手順に基づき、既存のコードから変更が必要な部分のみを書き換えました。変更不要な部分は一切触れず、元のまま維持しています。
-
-以下が変更を適用したコード全体になります。
-
-```tsx
 // #会場代表管理画面 (app/debug/page.tsx)
 "use client";
 import { useState, useEffect } from "react";
