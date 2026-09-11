@@ -711,11 +711,11 @@ const handleConfirmBooking = async () => {
           <p className="text-sm font-bold text-gray-600 mb-2 border-b pb-2">アトラクションを選ぶ</p>
           {filteredAttractions.map((shop) => (
             <button key={shop.id} onClick={() => setSelectedShop(shop)} className={`w-full bg-white p-3 rounded-xl shadow-sm border text-left flex items-start gap-3 hover:bg-gray-50 transition ${shop.isPaused ? 'opacity-60 grayscale' : ''}`}>
-              {shop.imageUrl && (
-                <div className="w-20 h-20 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                  <img src={shop.imageUrl} alt="" className="w-full h-full object-cover" />
-                </div>
-              )}
+              {(shop.iconUrl || shop.imageUrl) && (
+  　　　　　　　　　<div className="w-20 h-20 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+　　　　　　　　    <img src={shop.iconUrl || shop.imageUrl} alt="" className="w-full h-full object-cover" />
+  　　　　　　　　　</div>
+　　　　　　　　　)}
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-1 mb-1">
                   {shop.isQueueMode && <span className="bg-orange-100 text-orange-700 border-orange-200 border text-[10px] px-2 py-0.5 rounded font-bold">順番待ち制</span>}
@@ -746,20 +746,20 @@ const handleConfirmBooking = async () => {
               {currentTime.toLocaleTimeString('ja-JP', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </div>
 
-            {selectedShop.imageUrl && (
-              <div className="w-full h-56 bg-gray-200">
-                <img src={selectedShop.imageUrl} alt={selectedShop.name} className="w-full h-full object-cover" />
-              </div>
-            )}
+            {(selectedShop.headerUrl || selectedShop.imageUrl) && (
+ 　　　　　　　 <div className="w-full h-56 bg-gray-200">
+    　　　　　　　<img src={selectedShop.headerUrl || selectedShop.imageUrl} alt={selectedShop.name} className="w-full h-full object-cover" />
+　　　　　　　　  </div>
+　　　　　　　)}
 
-            <button 
-              onClick={() => { setSelectedShop(null); setDraftBooking(null); setBookingFailed(false); }} 
-              className={`absolute ${selectedShop.imageUrl ? "top-14" : "top-3"} left-3 bg-black/50 text-white px-4 py-2 rounded-full text-sm backdrop-blur-md z-10 hover:bg-black/70 transition`}
-            >
-              ← 戻る
-            </button>
+　　　　　　　<button 
+　　　　　　　  onClick={() => { setSelectedShop(null); setDraftBooking(null); setBookingFailed(false); }} 
+  　　　　　　　className={`absolute ${(selectedShop.headerUrl || selectedShop.imageUrl) ? "top-14" : "top-3"} left-3 bg-black/50 text-white px-4 py-2 rounded-full text-sm backdrop-blur-md z-10 hover:bg-black/70 transition`}
+　　　　　　　>
+ 　　　　　　　 ← 戻る
+　　　　　　　</button>
 
-            <div className={`p-5 border-b bg-gray-50 ${!selectedShop.imageUrl ? "pt-16" : ""}`}>
+　　　　　　　<div className={`p-5 border-b bg-gray-50 ${!(selectedShop.headerUrl || selectedShop.imageUrl) ? "pt-16" : ""}`}>
               {selectedShop.department && (
                 <p className="text-sm font-bold text-blue-600 mb-1">{selectedShop.department}</p>
               )}
