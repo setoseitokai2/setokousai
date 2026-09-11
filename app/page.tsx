@@ -769,7 +769,7 @@ export default function Home() {
 
           <div className="p-4">
             {selectedShop.description && (
-              <div className="mb-6 text-sm text-gray-700 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100">
+              <div className="mb-6 text-sm text-gray-700 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100 whitespace-pre-wrap">
                 {selectedShop.description}
               </div>
             )}
