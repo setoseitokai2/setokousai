@@ -37,13 +37,11 @@ export default function Footer() {
             所属組織 <span className="font-bold text-gray-700">岡山県立瀬戸高等学校 3年</span>
           </p>
           <p>
-            制作者名 <span className="font-bold text-gray-700">恥ずかしいので伏せさせていただく☆</span>
+            制作者名 <span className="font-bold text-gray-700">伏せさせていただく</span>
           </p>
 
           {/* 隠しメッセージ（文字サイズを10pxに調整） */}
           <p className="font-sans text-gray-700 text-[10px] font-bold tracking-wide pt-4">
-            製作者として何年使用しどの程度の効果を発揮するのかわからない。<br />
-            多くの人を助けられることを切に願っている。<br />
             良い一日になりますように
           </p>
 
@@ -85,5 +83,4 @@ export default function Footer() {
     </footer>
   );
 }
-
 
