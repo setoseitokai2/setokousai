@@ -28,7 +28,7 @@ type Ticket = {
 // ===================================================
 
 /** 1人あたりの最大予約可能枚数（例: 1 = 1人1回まで, 2 = 1人2回まで） */
-export const MAX_RESERVATIONS_PER_USER = 1;
+export const MAX_RESERVATIONS_PER_USER = 3;
 
 /** 枚数制限機能を有効にするかどうか（true: 有効, false: 無制限） */
 export const ENABLE_RESERVATION_LIMIT = true;
